@@ -89,7 +89,7 @@ const V={
   <h2 class="sec">Retour</h2>${legCard(c)}<p class="stop">Escale à Istanbul : ${dur((new Date(e.dep)-new Date(c.arr))/6e4)}</p>${legCard(e)}`},
  sej(){const G=planning(D),k=key(nowD(),TZ.TPE);return `<h1 class="h">Planning</h1><p class="small muted">Heures locales du lieu indiqué.</p>
   ${G.map(g=>g.vide?`<div class="empty small">${esc(g.label)} : programme à venir.</div>`:`<article class="card day ${g.k===k?"today":""}"><h2>${esc(g.label)}${g.k===k?' <span class="tag s">Aujourd\'hui</span>':""}</h2>${g.it.map(i=>`<div class="ev"><b>${esc(i.h||"")}</b><span>${esc(i.t)}${i.n?`<br><small class="muted">${esc(i.n)}</small>`:""}</span></div>`).join("")}</article>`).join("")}`},
- bud(){return `<h1 class="h">Budget</h1><div id="bSum"></div>
+ bud(){return `<h1 class="h">Budget</h1><div id="bSum"></div><div id="bTok"></div>
   <form id="bF" class="card" autocomplete="off"><h2 id="bT" class="sec" style="margin:0">Ajouter une dépense</h2>
   <label class="small muted" for="bL">Quoi</label><input class="fi" id="bL" required maxlength="80" autocomplete="off">
   <div class="two"><div><label class="small muted" for="bM">Montant</label><input class="fi" id="bM" required inputmode="decimal" autocomplete="off"></div>
@@ -97,9 +97,7 @@ const V={
   <div class="seg" role="group" aria-label="Monnaie">${["TWD","EUR"].map(d=>`<button type="button" data-dev="${d}">${d==="TWD"?"Dollars taïwanais":"Euros"}</button>`).join("")}</div>
   <span class="small muted">Qui a payé ?</span><div class="seg pay" role="group" aria-label="Qui a payé">${B.membres.map((m,i)=>`<button type="button" data-pay="${i}" class="p${i}">${esc(m.nom)}</button>`).join("")}</div>
   <p class="err" id="bE" role="alert" hidden></p><button class="btn" id="bS">Enregistrer</button><button type="button" class="btn alt" id="bCancel" hidden>Annuler</button></form>
-  <section class="card"><h2 class="sec" style="margin:0">Échanger avec l'autre téléphone</h2><p class="small" id="bN"></p><button type="button" class="btn" id="bOut">Créer le texte à envoyer</button><textarea class="fi ta" id="bX" readonly hidden aria-label="Texte à envoyer"></textarea>
-  <label class="small muted" for="bI">Texte reçu</label><textarea class="fi ta" id="bI" autocomplete="off" spellcheck="false"></textarea><button type="button" class="btn alt" id="bIn">Ajouter les dépenses reçues</button><p class="small muted" id="bSt" role="status"></p></section>
-  <div id="bList" style="display:contents"></div>`},
+  <div id="bList" style="display:contents"></div><p class="small muted" id="bSt" style="text-align:center"></p>`},
  urg(){return `<h1 class="h">Urgences</h1>
   <h2 class="sec" style="margin-top:0">Sur place, à Taïwan</h2>
   ${D.urgences.map(u=>`<div class="card"><b>${esc(u.nom)}</b>${u.note?`<span class="small muted">${esc(u.note)}</span>`:""}<div class="call"><b>${esc(u.tel)}</b><a href="tel:${esc(u.tel.replace(/[^+\d]/g,""))}">Appeler</a></div></div>`).join("")}
@@ -113,13 +111,11 @@ root.addEventListener("click",async e=>{const b=e.target.closest("button");if(!b
   else if(b.dataset.edit){budEdit(b.dataset.edit)}
   else if(b.dataset.del){await budDel(b.dataset.del,b)}
   else if(b.id==="bCancel"){budForm()}
-  else if(b.id==="bOut"){await budExport()}
-  else if(b.id==="bIn"){await budImport()}
   else if(b.dataset.show){const x=document.getElementById(b.dataset.show),on=x.textContent.startsWith("•");x.textContent=on?x.dataset.sec:"••••••";b.textContent=on?"Cacher":"Afficher"}
   else if(b.id==="lockBtn"){await keyDel();D=null;B=null;ME=null;tab="now";clearInterval(tick);lock()}});
-// --- budget : chiffré pour 2 personnes, gardé sur le téléphone, échangé par texte chiffré ---
-const LK="carnet_budget";
-let BS={cfg:{maj:0},items:{}},sel={dev:"TWD",pay:null,edit:null};
+// --- budget : chiffré pour 2 personnes, stocké dans un dépôt séparé de l'appli ---
+const LK="carnet_budget",api=()=>`https://api.github.com/repos/${B.repo}/contents/budget.json`;
+let BS={cfg:{maj:0},items:{}},sel={dev:"TWD",pay:null,edit:null},syncing=false;
 const money=(n,d)=>new Intl.NumberFormat("fr-FR",{maximumFractionDigits:d==="EUR"?2:0,minimumFractionDigits:d==="EUR"?2:0}).format(n)+(d==="EUR"?" €":" NT$");
 function merge(a,b){const out={cfg:(b.cfg?.maj||0)>(a.cfg?.maj||0)?b.cfg:a.cfg,items:{...a.items}};
   for(const[k,v]of Object.entries(b.items||{}))if(!out.items[k]||v.maj>out.items[k].maj)out.items[k]=v;return out}
@@ -127,27 +123,34 @@ const pubs=()=>B.membres.map(m=>m.pub);
 async function saveLocal(dirty){try{localStorage.setItem(LK,JSON.stringify({env:await sealEnv(BS,pubs()),dirty}))}catch(e){}}
 async function loadLocal(){try{const x=JSON.parse(localStorage.getItem(LK));if(x){const o=await openEnv(x.env,ME);if(o)BS=merge(BS,o);return!!x.dirty}}catch(e){}return false}
 const stat=t=>{const e=$("#bSt");if(e)e.textContent=t};
-const SEEN="carnet_budget_envoi",PFX="CARNET-BUDGET:";
-const lastSent=()=>{try{return+localStorage.getItem(SEEN)||0}catch(e){return 0}};
-const toSend=()=>Object.values(BS.items).filter(i=>i.maj>lastSent()).length;
-const sync=async()=>{await saveLocal(false);drawB()};
-async function budExport(){const txt=PFX+btoa(JSON.stringify(await sealEnv(BS,pubs())));const X=$("#bX");X.value=txt;X.hidden=false;
-  try{localStorage.setItem(SEEN,String(Date.now()))}catch(e){}
-  try{if(navigator.share){await navigator.share({text:txt});stat("Envoyé.");drawB();return txt}}catch(e){if(e.name==="AbortError")return txt}
-  try{await navigator.clipboard.writeText(txt);stat("Copié. Colle-le dans votre conversation.")}catch(e){X.focus();X.select();stat("Texte sélectionné. Copie-le puis envoie-le.")}
-  drawB();return txt}
-async function budImport(){const I=$("#bI"),t=I.value.trim().replace(/\s/g,"");if(!t.startsWith(PFX)){stat("Ce texte n'est pas un budget du Carnet.");return}
-  let o=null;try{o=await openEnv(JSON.parse(atob(t.slice(PFX.length))),ME)}catch(e){}
-  if(!o){stat("Ce texte est abîmé ou incomplet. Demande à l'autre de le renvoyer.");return}
-  const n=Object.keys(o.items||{}).filter(k=>!BS.items[k]||o.items[k].maj>BS.items[k].maj).length;BS=merge(BS,o);await saveLocal(false);I.value="";drawB();stat(n?`${n} dépense${n>1?"s":""} ajoutée${n>1?"s":""} ou mise${n>1?"s":""} à jour.`:"Rien de nouveau.")}
+async function ghGet(tok){const h={Accept:"application/vnd.github+json"};if(tok)h.Authorization="Bearer "+tok;
+  const r=await fetch(api(),{headers:h,cache:"no-store"});if(r.status===404)return{sha:null,env:null};if(!r.ok)throw r.status;
+  const j=await r.json();return{sha:j.sha,env:JSON.parse(atob(j.content.replace(/\s/g,"")))}}
+async function ghPut(tok,sha){const body={message:"maj",content:btoa(JSON.stringify(await sealEnv(BS,pubs())))};if(sha)body.sha=sha;
+  return fetch(api(),{method:"PUT",headers:{Accept:"application/vnd.github+json",Authorization:"Bearer "+tok},body:JSON.stringify(body)})}
+let again=false;
+async function sync(forceDirty){if(window.__DEMO)return;if(syncing){again=true;return}syncing=true;let dirty=forceDirty||await loadLocal();
+  try{for(let n=0;n<4;n++){const g=await ghGet(BS.cfg.token);
+      if(g.env){const o=await openEnv(g.env,ME);if(o){dirty=dirty||JSON.stringify(merge(o,BS))!==JSON.stringify(o);BS=merge(BS,o)}}
+      if(!g.env&&BS.cfg.token)dirty=true;
+      if(!dirty){await saveLocal(false);stat("À jour.");break}
+      if(!BS.cfg.token){await saveLocal(true);stat("En attente de l'accès GitHub.");break}
+      const p=await ghPut(BS.cfg.token,g.sha);
+      if(p.ok){dirty=false;await saveLocal(false);stat("Partagé avec l'autre téléphone.");break}
+      if(p.status===409||p.status===422){continue}
+      if(p.status===401||p.status===403||p.status===404){await saveLocal(true);stat("L'accès GitHub est refusé ou expiré. Tes dépenses restent sur ce téléphone.");break}
+      throw p.status}
+  }catch(e){await saveLocal(dirty);stat(dirty?"Pas de réseau. Dépenses gardées ici, envoi plus tard.":"Pas de réseau. Dernière version enregistrée.")}
+  syncing=false;drawB();if(again){again=false;sync()}}
 function drawB(){if(!$("#bSum"))return;const L=Object.values(BS.items).filter(i=>!i.suppr).sort((a,b)=>b.date.localeCompare(a.date)||b.maj-a.maj),tot=[0,0];L.forEach(i=>tot[i.paye]+=i.eur);
   const[a,b]=tot,T=a+b,M=B.membres,d=Math.abs(a-b)/2,hi=a>b?0:1;
   $("#bSum").innerHTML=`<section class="now"><span class="eb">Total, en euros</span><span class="t">${money(T,"EUR")}</span></section>
   <div class="clocks">${M.map((m,i)=>`<div class="clock"><b style="font-size:24px">${money(tot[i],"EUR")}</b><span>payé par ${esc(m.nom)}</span></div>`).join("")}</div>
   <p class="small muted">${d<.005?"Vous êtes à égalité.":`Pour partager à parts égales : ${esc(M[1-hi].nom)} doit ${money(d,"EUR")} à ${esc(M[hi].nom)}.`}</p>
   <div class="card"><label class="small muted" for="bR">Taux utilisé : 1 € = combien de NT$ ?</label><input class="fi" id="bR" inputmode="decimal" value="${esc(BS.cfg.taux||B.taux)}"><span class="small muted">Change les prochaines dépenses, pas les anciennes.</span></div>`;
-  $("#bR").onchange=async e=>{const n=parseFloat(e.target.value.replace(",","."));if(n>0){BS.cfg={...BS.cfg,taux:n,maj:Date.now()};await sync()}};
-  const c=toSend();$("#bN").textContent=c?`${c} changement${c>1?"s":""} pas encore envoyé${c>1?"s":""}.`:"Tout est envoyé.";
+  $("#bR").onchange=async e=>{const n=parseFloat(e.target.value.replace(",","."));if(n>0){BS.cfg={...BS.cfg,taux:n,maj:Date.now()};await saveLocal(true);sync(true)}};
+  $("#bTok").innerHTML=(!BS.cfg.token&&!window.__DEMO)?`<form id="bTF" class="card" autocomplete="off"><h2 class="sec" style="margin:0">Relier les 2 téléphones</h2><p class="small">À faire une seule fois. Colle l'accès GitHub créé pour le budget.</p><input class="fi" id="bTI" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Accès GitHub"><button class="btn">Relier</button></form>`:"";
+  const tf=$("#bTF");if(tf)tf.onsubmit=async e=>{e.preventDefault();const v=$("#bTI").value.trim();if(!v)return;BS.cfg={...BS.cfg,token:v,maj:Date.now()};await sync(true);if(/refusé/.test($("#bSt").textContent)){BS.cfg={...BS.cfg,token:null,maj:Date.now()};drawB();stat("Cet accès ne fonctionne pas. Vérifie-le et recommence.")}};
   $("#bList").innerHTML=L.length?`<h2 class="sec">Dépenses</h2>`+L.map(i=>`<article class="card exp"><div class="kv"><b class="lib">${esc(i.lib)}</b><b>${money(i.mont,i.dev)}</b></div>
    <div class="kv small"><span class="muted">${fmt(new Date(i.date+"T12:00:00Z"),"UTC",{day:"numeric",month:"long"})}${i.dev==="TWD"?" · "+money(i.eur,"EUR"):""}</span><span class="tag p${i.paye}">${esc(M[i.paye].nom)}</span></div>
    <div class="row"><button class="sm" data-edit="${esc(i.id)}">Modifier</button><button class="sm" data-del="${esc(i.id)}">Supprimer</button></div></article>`).join(""):`<div class="empty">Aucune dépense pour l'instant.</div>`}
@@ -155,13 +158,14 @@ function budPay(i){sel.pay=+i;document.querySelectorAll("[data-pay]").forEach(x=
 function budDev(d){sel.dev=d;document.querySelectorAll("[data-dev]").forEach(x=>x.setAttribute("aria-pressed",x.dataset.dev===d))}
 function budForm(){sel.edit=null;$("#bF").reset();$("#bD").value=key(nowD(),Intl.DateTimeFormat().resolvedOptions().timeZone);$("#bT").textContent="Ajouter une dépense";$("#bCancel").hidden=true;$("#bE").hidden=true;budDev(sel.dev);sel.pay=null;document.querySelectorAll("[data-pay]").forEach(x=>x.setAttribute("aria-pressed","false"))}
 function budEdit(id){const i=BS.items[id];if(!i)return;sel.edit=id;$("#bL").value=i.lib;$("#bM").value=i.mont;$("#bD").value=i.date;budDev(i.dev);budPay(i.paye);$("#bT").textContent="Modifier la dépense";$("#bCancel").hidden=false;$("#bF").scrollIntoView({block:"center"})}
-async function budDel(id,btn){if(btn.dataset.sure!=="1"){btn.dataset.sure="1";btn.textContent="Confirmer";return}BS.items[id]={...BS.items[id],suppr:true,maj:Date.now()};await sync()}
+async function budDel(id,btn){if(btn.dataset.sure!=="1"){btn.dataset.sure="1";btn.textContent="Confirmer";return}BS.items[id]={...BS.items[id],suppr:true,maj:Date.now()};await saveLocal(true);drawB();sync(true)}
 async function budOpen(){budForm();$("#bF").onsubmit=async e=>{e.preventDefault();const E=$("#bE"),n=parseFloat($("#bM").value.replace(/\s/g,"").replace(",","."));
     if(!(n>0)){E.hidden=false;E.textContent="Écris un montant, par exemple 350.";return}if(sel.pay===null){E.hidden=false;E.textContent="Choisis qui a payé.";return}
     const old=sel.edit&&BS.items[sel.edit],taux=old&&old.dev===sel.dev&&sel.dev==="TWD"?old.taux:+(BS.cfg.taux||B.taux),id=sel.edit||Date.now().toString(36)+u8(crypto.getRandomValues(new Uint8Array(4))).replace(/\W/g,"");
     BS.items[id]={id,lib:$("#bL").value.trim().slice(0,80),mont:n,dev:sel.dev,taux,eur:sel.dev==="EUR"?n:Math.round(n/taux*100)/100,date:$("#bD").value,paye:sel.pay,maj:Date.now()};
-    budForm();await sync()};
-  await loadLocal();drawB()}
+    await saveLocal(true);budForm();drawB();sync(true)};
+  await loadLocal();drawB();sync()}
+addEventListener("online",()=>{if(B&&tab==="bud")sync()});
 async function initB(priv){ME=priv;B=null;if(window.__DEMO_B){B=window.__DEMO_B.acces;BS=window.__DEMO_B.etat;return}
   if(F&&F.prive){try{const o=await openEnv(F.prive,priv);if(o&&o.budget)B=o.budget}catch(e){}}}
 function start(data,when){D=data;up=when;render();clearInterval(tick);tick=setInterval(()=>{const a=$("#cT"),f=$("#cF"),n=nowD();if(a){a.textContent=hm(n,TZ.TPE);f.textContent=hm(n,TZ.MRS);$("#dT").textContent=day(n,TZ.TPE);$("#dF").textContent=day(n,TZ.MRS)}},2e4)}
