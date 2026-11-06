@@ -35,3 +35,6 @@ h1,h2,h3,p{margin:0}h1,h2,h3{font-family:var(--round);font-weight:600;text-wrap:
 .nav button[aria-current=page]{background:var(--ink);color:var(--ink-fg)}
 .foot{font-size:14px;color:var(--muted);text-align:center;display:flex;flex-direction:column;gap:8px;margin-top:8px}
 @media (prefers-reduced-motion:no-preference){.btn,.nav button{transition:opacity .15s}}
+.fi{width:100%;min-height:50px;border:2px solid var(--line);border-radius:12px;background:var(--bg);padding:0 12px}.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}.two>div{min-width:0;display:flex;flex-direction:column;gap:6px}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:6px}.seg button{min-height:48px;border:2px solid var(--line);border-radius:12px;background:transparent;font:600 15px var(--round);cursor:pointer}.seg button[aria-pressed=true]{background:var(--ink);color:var(--ink-fg);border-color:var(--ink)}
+.tag.p0{background:var(--tur)}.tag.p1{background:var(--vio)}.exp .lib{font-size:17px;letter-spacing:0}.row{display:flex;gap:6px;flex-wrap:wrap}.nav button{font-size:13px;min-width:0}
