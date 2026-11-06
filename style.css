@@ -39,3 +39,4 @@ h1,h2,h3,p{margin:0}h1,h2,h3{font-family:var(--round);font-weight:600;text-wrap:
 .seg{display:grid;grid-template-columns:1fr 1fr;gap:6px}.seg button{min-height:48px;border:2px solid var(--line);border-radius:12px;background:transparent;font:600 15px var(--round);cursor:pointer}.seg button[aria-pressed=true]{background:var(--ink);color:var(--ink-fg);border-color:var(--ink)}
 .tag.p0{background:var(--tur)}.tag.p1{background:var(--vio)}.exp .lib{font-size:17px;letter-spacing:0}.row{display:flex;gap:6px;flex-wrap:wrap}.nav button{font-size:13px;min-width:0}
 [hidden]{display:none!important}#bSum{display:flex;flex-direction:column;gap:12px}#bTok:empty{display:none}
+.ta{min-height:84px;padding:10px 12px;font:13px/1.3 ui-monospace,Menlo,monospace;word-break:break-all;resize:vertical}
