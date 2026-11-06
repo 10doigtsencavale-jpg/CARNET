@@ -90,7 +90,7 @@ const V={
  sej(){const G=planning(D),k=key(nowD(),TZ.TPE);return `<h1 class="h">Planning</h1><p class="small muted">Heures locales du lieu indiqué.</p>
   ${G.map(g=>g.vide?`<div class="empty small">${esc(g.label)} : programme à venir.</div>`:`<article class="card day ${g.k===k?"today":""}"><h2>${esc(g.label)}${g.k===k?' <span class="tag s">Aujourd\'hui</span>':""}</h2>${g.it.map(i=>`<div class="ev"><b>${esc(i.h||"")}</b><span>${esc(i.t)}${i.n?`<br><small class="muted">${esc(i.n)}</small>`:""}</span></div>`).join("")}</article>`).join("")}`},
  bud(){return `<h1 class="h">Budget</h1><div id="bSum"></div><div id="bTok"></div>
-  <section class="card"><label class="sec" style="margin:0" for="bC">Convertir un prix</label><div class="conv"><div class="cin"><input class="fi" id="bC" inputmode="decimal" autocomplete="off" placeholder="0"><span>NT$</span></div><output id="bCo" for="bC">0,00 €</output></div><span class="small muted" id="bCt"></span></section>
+  <section class="card"><h2 class="sec" style="margin:0">Convertir un prix</h2><div class="conv"><div class="cin"><input class="fi" id="bC" inputmode="decimal" autocomplete="off" placeholder="0" aria-label="Montant en dollars taïwanais"><span>NT$</span></div><span class="eq" aria-hidden="true">=</span><div class="cin"><input class="fi" id="bCe" inputmode="decimal" autocomplete="off" placeholder="0" aria-label="Montant en euros"><span>€</span></div></div><span class="small muted" id="bCt"></span></section>
   <form id="bF" class="card" autocomplete="off"><h2 id="bT" class="sec" style="margin:0">Ajouter une dépense</h2>
   <label class="small muted" for="bL">Quoi</label><input class="fi" id="bL" required maxlength="80" autocomplete="off">
   <div class="two"><div><label class="small muted" for="bM">Montant</label><input class="fi" id="bM" required inputmode="decimal" autocomplete="off"></div>
@@ -155,13 +155,18 @@ function drawB(){if(!$("#bSum"))return;conv();const L=Object.values(BS.items).fi
   $("#bList").innerHTML=L.length?`<h2 class="sec">Dépenses</h2>`+L.map(i=>`<article class="card exp"><div class="kv"><b class="lib">${esc(i.lib)}</b><b>${money(i.mont,i.dev)}</b></div>
    <div class="kv small"><span class="muted">${fmt(new Date(i.date+"T12:00:00Z"),"UTC",{day:"numeric",month:"long"})}${i.dev==="TWD"?" · "+money(i.eur,"EUR"):""}</span><span class="tag p${i.paye}">${esc(M[i.paye].nom)}</span></div>
    <div class="row"><button class="sm" data-edit="${esc(i.id)}">Modifier</button><button class="sm" data-del="${esc(i.id)}">Supprimer</button></div></article>`).join(""):`<div class="empty">Aucune dépense pour l'instant.</div>`}
-function conv(){const i=$("#bC");if(!i)return;const t=+(BS.cfg.taux||B.taux),n=parseFloat(i.value.replace(/\s/g,"").replace(",","."));$("#bCo").textContent=money(n>0?n/t:0,"EUR");$("#bCt").textContent=`Au taux de 1 € = ${String(t).replace(".",",")} NT$. Calcul seul : rien n'est ajouté au budget.`}
+let convFrom="twd";
+const pnum=v=>parseFloat(String(v).replace(/\s/g,"").replace(",","."));
+const fnum=(n,d)=>new Intl.NumberFormat("fr-FR",{maximumFractionDigits:d,useGrouping:false}).format(n);
+function conv(from){const i=$("#bC"),e=$("#bCe");if(!i)return;if(from)convFrom=from;const t=+(BS.cfg.taux||B.taux);
+  if(convFrom==="twd"){const n=pnum(i.value);e.value=n>=0?fnum(n/t,2):""}else{const n=pnum(e.value);i.value=n>=0?fnum(n*t,0):""}
+  $("#bCt").textContent=`Au taux de 1 € = ${String(t).replace(".",",")} NT$. Calcul seul : rien n'est ajouté au budget.`}
 function budPay(i){sel.pay=+i;document.querySelectorAll("[data-pay]").forEach(x=>x.setAttribute("aria-pressed",x.dataset.pay===String(i)))}
 function budDev(d){sel.dev=d;document.querySelectorAll("[data-dev]").forEach(x=>x.setAttribute("aria-pressed",x.dataset.dev===d))}
 function budForm(){sel.edit=null;$("#bF").reset();$("#bD").value=key(nowD(),Intl.DateTimeFormat().resolvedOptions().timeZone);$("#bT").textContent="Ajouter une dépense";$("#bCancel").hidden=true;$("#bE").hidden=true;budDev(sel.dev);sel.pay=null;document.querySelectorAll("[data-pay]").forEach(x=>x.setAttribute("aria-pressed","false"))}
 function budEdit(id){const i=BS.items[id];if(!i)return;sel.edit=id;$("#bL").value=i.lib;$("#bM").value=i.mont;$("#bD").value=i.date;budDev(i.dev);budPay(i.paye);$("#bT").textContent="Modifier la dépense";$("#bCancel").hidden=false;$("#bF").scrollIntoView({block:"center"})}
 async function budDel(id,btn){if(btn.dataset.sure!=="1"){btn.dataset.sure="1";btn.textContent="Confirmer";return}BS.items[id]={...BS.items[id],suppr:true,maj:Date.now()};await saveLocal(true);drawB();sync(true)}
-async function budOpen(){budForm();$("#bC").oninput=conv;$("#bF").onsubmit=async e=>{e.preventDefault();const E=$("#bE"),n=parseFloat($("#bM").value.replace(/\s/g,"").replace(",","."));
+async function budOpen(){budForm();$("#bC").oninput=()=>conv("twd");$("#bCe").oninput=()=>conv("eur");$("#bF").onsubmit=async e=>{e.preventDefault();const E=$("#bE"),n=parseFloat($("#bM").value.replace(/\s/g,"").replace(",","."));
     if(!(n>0)){E.hidden=false;E.textContent="Écris un montant, par exemple 350.";return}if(sel.pay===null){E.hidden=false;E.textContent="Choisis qui a payé.";return}
     const old=sel.edit&&BS.items[sel.edit],taux=old&&old.dev===sel.dev&&sel.dev==="TWD"?old.taux:+(BS.cfg.taux||B.taux),id=sel.edit||Date.now().toString(36)+u8(crypto.getRandomValues(new Uint8Array(4))).replace(/\W/g,"");
     BS.items[id]={id,lib:$("#bL").value.trim().slice(0,80),mont:n,dev:sel.dev,taux,eur:sel.dev==="EUR"?n:Math.round(n/taux*100)/100,date:$("#bD").value,paye:sel.pay,maj:Date.now()};
