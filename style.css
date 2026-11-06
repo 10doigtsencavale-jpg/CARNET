@@ -39,3 +39,4 @@ h1,h2,h3,p{margin:0}h1,h2,h3{font-family:var(--round);font-weight:600;text-wrap:
 [hidden]{display:none!important}#bSum{display:flex;flex-direction:column;gap:12px}#bTok:empty{display:none}
 .conv{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:8px;align-items:center}.cin{position:relative;min-width:0}.cin input{padding-right:42px}.cin span{position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px}.eq{font:600 20px var(--round)}
 label.sec{font:600 19px var(--round)}
+.bilan{border-width:2px}.eqb{margin:0;background:var(--ink);color:var(--ink-fg);border-radius:6px;padding:12px;font:600 19px/1.2 var(--round);text-align:center}
