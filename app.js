@@ -89,16 +89,17 @@ const V={
   <h2 class="sec">Retour</h2>${legCard(c)}<p class="stop">Escale à Istanbul : ${dur((new Date(e.dep)-new Date(c.arr))/6e4)}</p>${legCard(e)}`},
  sej(){const G=planning(D),k=key(nowD(),TZ.TPE);return `<h1 class="h">Planning</h1><p class="small muted">Heures locales du lieu indiqué.</p>
   ${G.map(g=>g.vide?`<div class="empty small">${esc(g.label)} : programme à venir.</div>`:`<article class="card day ${g.k===k?"today":""}"><h2>${esc(g.label)}${g.k===k?' <span class="tag s">Aujourd\'hui</span>':""}</h2>${g.it.map(i=>`<div class="ev"><b>${esc(i.h||"")}</b><span>${esc(i.t)}${i.n?`<br><small class="muted">${esc(i.n)}</small>`:""}</span></div>`).join("")}</article>`).join("")}`},
- bud(){return `<h1 class="h">Budget</h1><div id="bSum"></div><div id="bTok"></div>
-  <section class="card"><h2 class="sec" style="margin:0">Convertir un prix</h2><div class="conv"><div class="cin"><input class="fi" id="bC" inputmode="decimal" autocomplete="off" placeholder="0" aria-label="Montant en dollars taïwanais"><span>NT$</span></div><span class="eq" aria-hidden="true">=</span><div class="cin"><input class="fi" id="bCe" inputmode="decimal" autocomplete="off" placeholder="0" aria-label="Montant en euros"><span>€</span></div></div><span class="small muted" id="bCt"></span></section>
+ bud(){return `<h1 class="h">Budget</h1>
+  <section class="card" aria-label="Convertir un prix"><div class="conv"><div class="cin"><input class="fi big" id="bC" inputmode="decimal" autocomplete="off" placeholder="0" aria-label="Montant en dollars taïwanais"><span>NT$</span></div><span class="eq" aria-hidden="true">=</span><div class="cin"><input class="fi big" id="bCe" inputmode="decimal" autocomplete="off" placeholder="0" aria-label="Montant en euros"><span>€</span></div></div>
+  <div class="rate"><span id="bCt"></span><button type="button" class="lnk" id="bRo">Modifier le taux</button></div>
+  <form id="bRf" class="ratef" hidden><input class="fi" id="bR" inputmode="decimal" autocomplete="off" aria-label="Combien de NT$ pour 1 euro"><button class="sm">Valider</button><p class="err" id="bRe" role="alert" hidden></p></form></section>
   <form id="bF" class="card" autocomplete="off"><h2 id="bT" class="sec" style="margin:0">Ajouter une dépense</h2>
-  <label class="small muted" for="bL">Quoi</label><input class="fi" id="bL" required maxlength="80" autocomplete="off">
-  <div class="two"><div><label class="small muted" for="bM">Montant</label><input class="fi" id="bM" required inputmode="decimal" autocomplete="off"></div>
-  <div><label class="small muted" for="bD">Date</label><input class="fi" id="bD" type="date" required></div></div>
-  <div class="seg" role="group" aria-label="Monnaie">${["TWD","EUR"].map(d=>`<button type="button" data-dev="${d}">${d==="TWD"?"Dollars taïwanais":"Euros"}</button>`).join("")}</div>
-  <span class="small muted">Qui a payé ?</span><div class="seg pay" role="group" aria-label="Qui a payé">${B.membres.map((m,i)=>`<button type="button" data-pay="${i}" class="p${i}">${esc(m.nom)}</button>`).join("")}</div>
-  <p class="err" id="bE" role="alert" hidden></p><button class="btn" id="bS">Enregistrer</button><button type="button" class="btn alt" id="bCancel" hidden>Annuler</button></form>
-  <div id="bList" style="display:contents"></div><p class="small muted" id="bSt" style="text-align:center"></p>`},
+  <div class="two"><input class="fi" id="bL" required maxlength="80" autocomplete="off" placeholder="Quoi ?" aria-label="Quoi"><input class="fi" id="bM" required inputmode="decimal" autocomplete="off" placeholder="Montant" aria-label="Montant"></div>
+  <div class="seg" role="group" aria-label="Monnaie">${["TWD","EUR"].map(d=>`<button type="button" data-dev="${d}">${d==="TWD"?"NT$":"€"}</button>`).join("")}</div>
+  <div class="seg pay" role="group" aria-label="Qui a payé">${B.membres.map((m,i)=>`<button type="button" data-pay="${i}">${esc(m.nom)}</button>`).join("")}</div>
+  <div class="datel"><label class="small muted" for="bD">Date</label><input class="fi" id="bD" type="date" required></div>
+  <p class="err" id="bE" role="alert" hidden></p><button class="btn" id="bS">Ajouter</button><button type="button" class="btn alt" id="bCancel" hidden>Annuler</button></form>
+  <div id="bList" style="display:contents"></div><div id="bTok"></div><p class="small muted" id="bSt" style="text-align:center"></p>`},
  urg(){return `<h1 class="h">Urgences</h1>
   <h2 class="sec" style="margin-top:0">Sur place, à Taïwan</h2>
   ${D.urgences.map(u=>`<div class="card"><b>${esc(u.nom)}</b>${u.note?`<span class="small muted">${esc(u.note)}</span>`:""}<div class="call"><b>${esc(u.tel)}</b><a href="tel:${esc(u.tel.replace(/[^+\d]/g,""))}">Appeler</a></div></div>`).join("")}
@@ -109,6 +110,7 @@ root.addEventListener("click",async e=>{const b=e.target.closest("button");if(!b
   if(b.dataset.tab){tab=b.dataset.tab;render()}
   else if(b.dataset.pay){budPay(b.dataset.pay)}
   else if(b.dataset.dev){budDev(b.dataset.dev)}
+  else if(b.dataset.row){sel.open=sel.open===b.dataset.row?null:b.dataset.row;drawB()}
   else if(b.dataset.edit){budEdit(b.dataset.edit)}
   else if(b.dataset.del){await budDel(b.dataset.del,b)}
   else if(b.id==="bCancel"){budForm()}
@@ -116,7 +118,7 @@ root.addEventListener("click",async e=>{const b=e.target.closest("button");if(!b
   else if(b.id==="lockBtn"){await keyDel();D=null;B=null;ME=null;tab="now";clearInterval(tick);lock()}});
 // --- budget : chiffré pour 2 personnes, stocké dans un dépôt séparé de l'appli ---
 const LK="carnet_budget",api=()=>`https://api.github.com/repos/${B.repo}/contents/budget.json`;
-let BS={cfg:{maj:0},items:{}},sel={dev:"TWD",pay:null,edit:null},syncing=false;
+let BS={cfg:{maj:0},items:{}},sel={dev:"TWD",pay:null,edit:null,open:null},syncing=false;
 const money=(n,d)=>new Intl.NumberFormat("fr-FR",{maximumFractionDigits:d==="EUR"?2:0,minimumFractionDigits:d==="EUR"?2:0}).format(n)+(d==="EUR"?" €":" NT$");
 function merge(a,b){const out={cfg:(b.cfg?.maj||0)>(a.cfg?.maj||0)?b.cfg:a.cfg,items:{...a.items}};
   for(const[k,v]of Object.entries(b.items||{}))if(!out.items[k]||v.maj>out.items[k].maj)out.items[k]=v;return out}
@@ -143,32 +145,33 @@ async function sync(forceDirty){if(window.__DEMO)return;if(syncing){again=true;r
       throw p.status}
   }catch(e){await saveLocal(dirty);stat(dirty?"Pas de réseau. Dépenses gardées ici, envoi plus tard.":"Pas de réseau. Dernière version enregistrée.")}
   syncing=false;drawB();if(again){again=false;sync()}}
-function drawB(){if(!$("#bSum"))return;conv();const L=Object.values(BS.items).filter(i=>!i.suppr).sort((a,b)=>b.date.localeCompare(a.date)||b.maj-a.maj),tot=[0,0];L.forEach(i=>tot[i.paye]+=i.eur);
+const short=n=>n.length>7?n.slice(0,3)+".":n;
+const RMIN=20,RMAX=60,okRate=t=>t>=RMIN&&t<=RMAX,rate=()=>{const t=+BS.cfg.taux;return okRate(t)?t:+B.taux};
+function drawB(){if(!$("#bList"))return;conv();const L=Object.values(BS.items).filter(i=>!i.suppr).sort((a,b)=>b.date.localeCompare(a.date)||b.maj-a.maj),tot=[0,0];L.forEach(i=>tot[i.paye]+=i.eur);
   const[a,b]=tot,T=a+b,M=B.membres,d=Math.abs(a-b)/2,hi=a>b?0:1;
-  $("#bSum").innerHTML=`<section class="now"><span class="eb">Total, en euros</span><span class="t">${money(T,"EUR")}</span></section>
-  <div class="card"><label class="small muted" for="bR">Taux utilisé : 1 € = combien de NT$ ?</label><input class="fi" id="bR" inputmode="decimal" value="${esc(BS.cfg.taux||B.taux)}"><span class="small muted">Change les prochaines dépenses, pas les anciennes.</span></div>`;
-  $("#bR").onchange=async e=>{const n=parseFloat(e.target.value.replace(",","."));if(n>0){BS.cfg={...BS.cfg,taux:n,maj:Date.now()};await saveLocal(true);sync(true)}};
   $("#bTok").innerHTML=(!BS.cfg.token&&!window.__DEMO)?`<form id="bTF" class="card" autocomplete="off"><h2 class="sec" style="margin:0">Relier les 2 téléphones</h2><p class="small">À faire une seule fois. Colle l'accès GitHub créé pour le budget.</p><input class="fi" id="bTI" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Accès GitHub"><button class="btn">Relier</button></form>`:"";
   const tf=$("#bTF");if(tf)tf.onsubmit=async e=>{e.preventDefault();const v=$("#bTI").value.trim();if(!v)return;BS.cfg={...BS.cfg,token:v,maj:Date.now()};await sync(true);if(/refusé/.test($("#bSt").textContent)){BS.cfg={...BS.cfg,token:null,maj:Date.now()};drawB();stat("Cet accès ne fonctionne pas. Vérifie-le et recommence.")}};
-  $("#bList").innerHTML=L.length?`<h2 class="sec">Dépenses</h2>`+L.map(i=>`<article class="card exp"><div class="kv"><b class="lib">${esc(i.lib)}</b><b>${money(i.mont,i.dev)}</b></div>
-   <div class="kv small"><span class="muted">${fmt(new Date(i.date+"T12:00:00Z"),"UTC",{day:"numeric",month:"long"})}${i.dev==="TWD"?" · "+money(i.eur,"EUR"):""}</span><span class="tag p${i.paye}">${esc(M[i.paye].nom)}</span></div>
-   <div class="row"><button class="sm" data-edit="${esc(i.id)}">Modifier</button><button class="sm" data-del="${esc(i.id)}">Supprimer</button></div></article>`).join("")+`<section class="tk" aria-label="Total du voyage"><h2>TOTAL DU VOYAGE</h2>${M.map((m,i)=>`<div class="dl"><span>Payé par ${esc(m.nom)}</span><b>${money(tot[i],"EUR")}</b></div>`).join("")}<div class="dl"><span>Part de chacun</span><b>${money(T/2,"EUR")}</b></div><div class="hr"></div><div class="dl big"><span>Total</span><b>${money(T,"EUR")}</b></div><div class="pay">${d<.005?"Vous êtes à égalité":`${esc(M[1-hi].nom)} doit ${money(d,"EUR")} à ${esc(M[hi].nom)}`}</div></section>`:`<div class="empty">Aucune dépense pour l'instant.</div>`}
+  $("#bList").innerHTML=L.length?`<section class="card" id="bRec" aria-label="Récap"><h2 class="sec" style="margin:0">Récap</h2><div class="thd"><span>Quoi</span><span>Euros</span><span>Payé par</span></div>
+  ${L.map(i=>`<div class="ln"><button type="button" class="trow" data-row="${esc(i.id)}" aria-expanded="${sel.open===i.id}"><span class="q"><b class="lib">${esc(i.lib)}</b><small>${fmt(new Date(i.date+"T12:00:00Z"),"UTC",{day:"numeric",month:"short"})}${i.dev==="TWD"?" · "+money(i.mont,"TWD"):""}</small></span><b class="num">${money(i.eur,"EUR")}</b><span class="tag p${i.paye}">${esc(short(M[i.paye].nom))}</span></button>${sel.open===i.id?`<div class="row"><button class="sm" data-edit="${esc(i.id)}">Modifier</button><button class="sm" data-del="${esc(i.id)}">Supprimer</button></div>`:""}</div>`).join("")}
+  <div class="dl first"><span>${esc(M[0].nom)} a payé</span><b>${money(tot[0],"EUR")}</b></div><div class="dl"><span>${esc(M[1].nom)} a payé</span><b>${money(tot[1],"EUR")}</b></div><div class="hr"></div><div class="dl big"><span>Total</span><b>${money(T,"EUR")}</b></div><div class="owe">${d<.005?"Vous êtes à égalité":`${esc(M[1-hi].nom)} doit ${money(d,"EUR")} à ${esc(M[hi].nom)}`}</div></section>`:`<div class="empty">Aucune dépense pour l'instant.</div>`}
 let convFrom="twd";
 const pnum=v=>parseFloat(String(v).replace(/\s/g,"").replace(",","."));
 const fnum=(n,d)=>new Intl.NumberFormat("fr-FR",{maximumFractionDigits:d,useGrouping:false}).format(n);
-function conv(from){const i=$("#bC"),e=$("#bCe");if(!i)return;if(from)convFrom=from;const t=+(BS.cfg.taux||B.taux);
+function conv(from){const i=$("#bC"),e=$("#bCe");if(!i)return;if(from)convFrom=from;const t=rate();
   if(convFrom==="twd"){const n=pnum(i.value);e.value=n>=0?fnum(n/t,2):""}else{const n=pnum(e.value);i.value=n>=0?fnum(n*t,0):""}
-  $("#bCt").textContent=`Au taux de 1 € = ${String(t).replace(".",",")} NT$. Calcul seul : rien n'est ajouté au budget.`}
+  $("#bCt").textContent=`1 € = ${String(t).replace(".",",")} NT$`}
 function budPay(i){sel.pay=+i;document.querySelectorAll("[data-pay]").forEach(x=>x.setAttribute("aria-pressed",x.dataset.pay===String(i)))}
 function budDev(d){sel.dev=d;document.querySelectorAll("[data-dev]").forEach(x=>x.setAttribute("aria-pressed",x.dataset.dev===d))}
-function budForm(){sel.edit=null;$("#bF").reset();$("#bD").value=key(nowD(),Intl.DateTimeFormat().resolvedOptions().timeZone);$("#bT").textContent="Ajouter une dépense";$("#bCancel").hidden=true;$("#bE").hidden=true;budDev(sel.dev);sel.pay=null;document.querySelectorAll("[data-pay]").forEach(x=>x.setAttribute("aria-pressed","false"))}
-function budEdit(id){const i=BS.items[id];if(!i)return;sel.edit=id;$("#bL").value=i.lib;$("#bM").value=i.mont;$("#bD").value=i.date;budDev(i.dev);budPay(i.paye);$("#bT").textContent="Modifier la dépense";$("#bCancel").hidden=false;$("#bF").scrollIntoView({block:"center"})}
+function budForm(){sel.edit=null;$("#bF").reset();$("#bD").value=key(nowD(),Intl.DateTimeFormat().resolvedOptions().timeZone);$("#bT").textContent="Ajouter une dépense";$("#bS").textContent="Ajouter";$("#bCancel").hidden=true;$("#bE").hidden=true;budDev(sel.dev);sel.pay=null;document.querySelectorAll("[data-pay]").forEach(x=>x.setAttribute("aria-pressed","false"))}
+function budEdit(id){const i=BS.items[id];if(!i)return;sel.edit=id;$("#bL").value=i.lib;$("#bM").value=i.mont;$("#bD").value=i.date;budDev(i.dev);budPay(i.paye);$("#bT").textContent="Modifier la dépense";$("#bS").textContent="Enregistrer";$("#bCancel").hidden=false;$("#bF").scrollIntoView({block:"center"})}
 async function budDel(id,btn){if(btn.dataset.sure!=="1"){btn.dataset.sure="1";btn.textContent="Confirmer";return}BS.items[id]={...BS.items[id],suppr:true,maj:Date.now()};await saveLocal(true);drawB();sync(true)}
-async function budOpen(){budForm();$("#bC").oninput=()=>conv("twd");$("#bCe").oninput=()=>conv("eur");$("#bF").onsubmit=async e=>{e.preventDefault();const E=$("#bE"),n=parseFloat($("#bM").value.replace(/\s/g,"").replace(",","."));
+async function budOpen(){budForm();$("#bC").oninput=()=>conv("twd");$("#bCe").oninput=()=>conv("eur");$("#bRo").onclick=()=>{const f=$("#bRf");f.hidden=!f.hidden;if(!f.hidden){$("#bR").value=String(rate()).replace(".",",");$("#bRe").hidden=true;$("#bR").focus()}};
+  $("#bRf").onsubmit=async e=>{e.preventDefault();const n=pnum($("#bR").value),x=$("#bRe");if(!okRate(n)){x.hidden=false;x.textContent=`Ce taux semble faux. Écris un nombre entre ${RMIN} et ${RMAX}, par exemple 36,1.`;return}BS.cfg={...BS.cfg,taux:n,maj:Date.now()};$("#bRf").hidden=true;conv();await saveLocal(true);sync(true)};
+  $("#bF").onsubmit=async e=>{e.preventDefault();const E=$("#bE"),n=parseFloat($("#bM").value.replace(/\s/g,"").replace(",","."));
     if(!(n>0)){E.hidden=false;E.textContent="Écris un montant, par exemple 350.";return}if(sel.pay===null){E.hidden=false;E.textContent="Choisis qui a payé.";return}
-    const old=sel.edit&&BS.items[sel.edit],taux=old&&old.dev===sel.dev&&sel.dev==="TWD"?old.taux:+(BS.cfg.taux||B.taux),id=sel.edit||Date.now().toString(36)+u8(crypto.getRandomValues(new Uint8Array(4))).replace(/\W/g,"");
+    const old=sel.edit&&BS.items[sel.edit],taux=old&&old.dev===sel.dev&&sel.dev==="TWD"&&okRate(+old.taux)?old.taux:rate(),id=sel.edit||Date.now().toString(36)+u8(crypto.getRandomValues(new Uint8Array(4))).replace(/\W/g,"");
     BS.items[id]={id,lib:$("#bL").value.trim().slice(0,80),mont:n,dev:sel.dev,taux,eur:sel.dev==="EUR"?n:Math.round(n/taux*100)/100,date:$("#bD").value,paye:sel.pay,maj:Date.now()};
-    await saveLocal(true);budForm();drawB();sync(true)};
+    sel.open=null;await saveLocal(true);budForm();drawB();sync(true)};
   await loadLocal();drawB();sync()}
 addEventListener("online",()=>{if(B&&tab==="bud")sync()});
 async function initB(priv){ME=priv;B=null;if(window.__DEMO_B){B=window.__DEMO_B.acces;BS=window.__DEMO_B.etat;return}
