@@ -181,7 +181,7 @@ async function budOpen(){budForm();$("#bC").oninput=()=>conv("twd");$("#bCe").on
   await loadLocal();drawB();sync()}
 addEventListener("online",()=>{if(B&&(tab==="bud"||tab==="todo"))sync()});
 // --- To Do : même coffre chiffré que le budget, partagé entre les 2 téléphones ---
-const TODO0=["Définir l'itinéraire","Réserver les logements","Réserver la voiture sur Chailease","Réserver l'assurance Chapka"].map((lib,i)=>({id:"t"+(i+1),lib,fait:false,ordre:i+1,maj:0}));
+const TODO0=[]; // aucune tâche écrite en clair : tout se saisit dans l'appli, chiffré
 const todos=()=>{const A={};TODO0.forEach(t=>A[t.id]=t);Object.entries(BS.todo||{}).forEach(([k,v])=>{if(!A[k]||v.maj>=A[k].maj)A[k]=v});return Object.values(A).filter(t=>!t.suppr).sort((a,b)=>a.ordre-b.ordre)};
 function drawT(){const box=$("#tList");if(!box)return;const L=todos(),n=L.filter(t=>t.fait).length;
   $("#tCount").textContent=!L.length?"":n===L.length?"Tout est fait. Bravo !":`${n} sur ${L.length} fait${n>1?"s":""}.`;
