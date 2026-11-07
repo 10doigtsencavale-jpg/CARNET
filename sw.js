@@ -1,4 +1,4 @@
-const C="carnet-v16",APP=["./","index.html","app.js","style.css","manifest.json","icon-192.png","icon-512.png","icon-maskable-512.png","fonts/zilla-slab-latin-700-normal.woff2","fonts/atkinson-hyperlegible-latin-400-normal.woff2","fonts/atkinson-hyperlegible-latin-700-normal.woff2"];
+const C="carnet-v17",APP=["./","index.html","app.js","style.css","manifest.json","icon-192.png","icon-512.png","icon-maskable-512.png","fonts/zilla-slab-latin-700-normal.woff2","fonts/atkinson-hyperlegible-latin-400-normal.woff2","fonts/atkinson-hyperlegible-latin-700-normal.woff2"];
 self.addEventListener("install",e=>e.waitUntil(caches.open(C).then(c=>c.addAll(APP.concat("carnet.json"))).then(()=>self.skipWaiting())));
 self.addEventListener("activate",e=>e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==C).map(x=>caches.delete(x)))).then(()=>self.clients.claim())));
 // Réseau d'abord (données fraîches), sinon copie enregistrée (hors connexion). Seule la version chiffrée est gardée.

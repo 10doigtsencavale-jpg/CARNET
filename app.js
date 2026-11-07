@@ -183,15 +183,39 @@ addEventListener("online",()=>{if(B&&(tab==="bud"||tab==="todo"))sync()});
 // --- To Do : même coffre chiffré que le budget, partagé entre les 2 téléphones ---
 const TODO0=[]; // aucune tâche écrite en clair : tout se saisit dans l'appli, chiffré
 const todos=()=>{const A={};TODO0.forEach(t=>A[t.id]=t);Object.entries(BS.todo||{}).forEach(([k,v])=>{if(!A[k]||v.maj>=A[k].maj)A[k]=v});return Object.values(A).filter(t=>!t.suppr).sort((a,b)=>a.ordre-b.ordre)};
-function drawT(){const box=$("#tList");if(!box)return;const L=todos(),n=L.filter(t=>t.fait).length;
+let dragT=null,drawLater=false;
+function drawT(){const box=$("#tList");if(!box)return;if(dragT){drawLater=true;return}const L=todos(),n=L.filter(t=>t.fait).length;
   $("#tCount").textContent=!L.length?"":n===L.length?"Tout est fait. Bravo !":`${n} sur ${L.length} fait${n>1?"s":""}.`;
-  box.innerHTML=L.length?L.map(t=>`<div class="ti${t.fait?" done":""}"><label class="check"><input type="checkbox" data-todo="${esc(t.id)}" ${t.fait?"checked":""}><span>${esc(t.lib)}</span></label><button type="button" class="tx" data-tdel="${esc(t.id)}" aria-label="Supprimer : ${esc(t.lib)}">×</button></div>`).join(""):`<p class="small">Rien à faire pour l'instant.</p>`}
+  box.innerHTML=L.length?L.map(t=>`<div class="ti${t.fait?" done":""}" data-tid="${esc(t.id)}"><button type="button" class="grip" data-grip="${esc(t.id)}" aria-label="Déplacer : ${esc(t.lib)}. Flèches haut et bas."><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01"/></svg></button><label class="check"><input type="checkbox" data-todo="${esc(t.id)}" ${t.fait?"checked":""}><span>${esc(t.lib)}</span></label><button type="button" class="tx" data-tdel="${esc(t.id)}" aria-label="Supprimer : ${esc(t.lib)}">×</button></div>`).join(""):`<p class="small">Rien à faire pour l'instant.</p>`}
 const todoSet=async(id,ch)=>{const t=todos().find(x=>x.id===id);if(!t)return;BS.todo={...BS.todo,[id]:{...t,...ch,maj:Date.now()}};await saveLocal(true);drawT();sync(true)};
 async function todoDel(id,btn){if(btn.dataset.sure!=="1"){btn.dataset.sure="1";btn.textContent="Supprimer ?";btn.classList.add("sure");return}await todoSet(id,{suppr:true})}
+// nouvel ordre : on renumérote, seules les tâches qui ont bougé sont envoyées
+async function todoOrder(ids){const L=todos(),A={};L.forEach(t=>A[t.id]=t);const now=Date.now();let ch=false;
+  ids.forEach((id,i)=>{const t=A[id];if(t&&t.ordre!==i+1){BS.todo={...BS.todo,[id]:{...t,ordre:i+1,maj:now}};ch=true}});
+  if(ch){await saveLocal(true);drawT();sync(true)}}
+// glisser avec le doigt (ou la souris), par la poignée à gauche
+root.addEventListener("pointerdown",e=>{const g=e.target.closest("[data-grip]");if(!g||dragT)return;e.preventDefault();
+  const row=g.closest(".ti"),rows=[...document.querySelectorAll("#tList .ti")],h=row.getBoundingClientRect().height;
+  dragT={row,rows,from:rows.indexOf(row),to:rows.indexOf(row),y0:e.clientY,mid:rows.map(r=>{const b=r.getBoundingClientRect();return b.top+b.height/2}),h};
+  g.setPointerCapture(e.pointerId);row.classList.add("drag");
+  const move=ev=>{const d=dragT,dy=ev.clientY-d.y0,c=d.mid[d.from]+dy;let to=d.from;
+      d.mid.forEach((m,i)=>{if(i<d.from&&c<m)to=Math.min(to,i);if(i>d.from&&c>m)to=Math.max(to,i)});d.to=to;
+      d.rows.forEach((r,i)=>{if(r===d.row)return;r.style.transform=(i>d.from&&i<=to)?`translateY(${-d.h}px)`:(i<d.from&&i>=to)?`translateY(${d.h}px)`:""});
+      d.row.style.transform=`translateY(${dy}px)`},
+    end=async()=>{g.removeEventListener("pointermove",move);g.removeEventListener("pointerup",end);g.removeEventListener("pointercancel",end);
+      const d=dragT,ids=d.rows.map(r=>r.dataset.tid),[m]=ids.splice(d.from,1);ids.splice(d.to,0,m);
+      d.rows.forEach(r=>{r.style.transform="";r.classList.remove("drag")});dragT=null;
+      if(d.to!==d.from)await todoOrder(ids);else if(drawLater)drawT();drawLater=false;
+      const ng=document.querySelector(`[data-grip="${CSS.escape(m)}"]`);if(ng&&d.kb)ng.focus()};
+  g.addEventListener("pointermove",move);g.addEventListener("pointerup",end);g.addEventListener("pointercancel",end)});
+// clavier : flèches haut / bas sur la poignée
+root.addEventListener("keydown",async e=>{const g=e.target.closest("[data-grip]");if(!g||!/^Arrow(Up|Down)$/.test(e.key))return;e.preventDefault();
+  const ids=todos().map(t=>t.id),i=ids.indexOf(g.dataset.grip),j=i+(e.key==="ArrowUp"?-1:1);if(j<0||j>=ids.length)return;
+  [ids[i],ids[j]]=[ids[j],ids[i]];await todoOrder(ids);const ng=document.querySelector(`[data-grip="${CSS.escape(ids[j])}"]`);if(ng)ng.focus()});
 root.addEventListener("change",e=>{const c=e.target.closest("[data-todo]");if(c)todoSet(c.dataset.todo,{fait:c.checked})});
 async function todoOpen(){$("#tF").onsubmit=async e=>{e.preventDefault();const v=$("#tI").value.trim().slice(0,80);if(!v)return;
     const id="t"+Date.now().toString(36)+u8(crypto.getRandomValues(new Uint8Array(3))).replace(/\W/g,"");$("#tI").value="";
-    BS.todo={...BS.todo,[id]:{id,lib:v,fait:false,ordre:Date.now(),maj:Date.now()}};await saveLocal(true);drawT();sync(true)};
+    BS.todo={...BS.todo,[id]:{id,lib:v,fait:false,ordre:Math.max(0,...todos().map(t=>t.ordre))+1,maj:Date.now()}};await saveLocal(true);drawT();sync(true)};
   drawT();await loadLocal();drawT();sync()}
 async function initB(priv){ME=priv;B=null;if(window.__DEMO_B){B=window.__DEMO_B.acces;BS=window.__DEMO_B.etat;return}
   if(F&&F.prive){try{const o=await openEnv(F.prive,priv);if(o&&o.budget)B=o.budget}catch(e){}}}

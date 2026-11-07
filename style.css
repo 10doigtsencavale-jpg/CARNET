@@ -46,8 +46,11 @@ label.sec{font:600 19px var(--round)}
 .tk{background:var(--card);padding:16px 14px 26px;display:flex;flex-direction:column;gap:8px;-webkit-mask:radial-gradient(circle 6px at 8px 100%,transparent 98%,#000) -8px 0/16px 100% repeat-x;mask:radial-gradient(circle 6px at 8px 100%,transparent 98%,#000) -8px 0/16px 100% repeat-x}.tk h2{font-size:17px;text-align:center;letter-spacing:.06em}
 
 /* to do */
-#tList{gap:0;padding:4px 14px}.ti{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;border-bottom:1.5px dashed var(--line);min-height:56px}.ti:last-child{border-bottom:0}
+#tList{gap:0;padding:4px 14px}.ti{display:grid;grid-template-columns:auto minmax(0,1fr) auto;background:var(--card);position:relative;gap:8px;align-items:center;border-bottom:1.5px dashed var(--line);min-height:56px}.ti:last-child{border-bottom:0}
 .ti .check{font-size:17px;align-items:center;padding:10px 0;cursor:pointer}.ti .check input{width:26px;height:26px;accent-color:var(--ink)}.ti.done span{text-decoration:line-through;color:var(--muted)}
 .tx{min-width:44px;min-height:44px;border:0;background:transparent;color:var(--muted);font:400 30px/1 var(--body);cursor:pointer;border-radius:6px}.tx.sure{font-size:14px;color:var(--fg);border:1.5px solid var(--line);padding:0 8px}
 @media (max-width:400px){.nav{gap:2px;padding-left:max(4px,env(safe-area-inset-left,0px));padding-right:max(4px,env(safe-area-inset-right,0px))}.nav button{font-size:12px;letter-spacing:-.02em}}
 @media (max-width:370px){.nav button{font-size:11.5px}}
+.grip{width:36px;min-height:48px;margin-left:-8px;border:0;background:transparent;color:var(--muted);cursor:grab;touch-action:none;display:flex;align-items:center;justify-content:center;border-radius:6px}.grip svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:3.2;stroke-linecap:round}
+.ti.drag{z-index:2;box-shadow:0 6px 16px rgba(64,22,40,.25);border:1.5px solid var(--line);border-radius:6px;cursor:grabbing}.ti.drag .grip{cursor:grabbing;color:var(--fg)}
+@media (prefers-reduced-motion:no-preference){.ti:not(.drag){transition:transform .15s}}
