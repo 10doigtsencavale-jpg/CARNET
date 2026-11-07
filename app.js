@@ -57,7 +57,7 @@ function status(D){const n=nowD(),L=D.vols.map(v=>({...v,d:new Date(v.dep),a:new
   if(n>=r1.a&&n<r2.d)return{eb:"Escale retour",t:"À Istanbul",s:`${r2.vol} à ${hm(r2.d,TZ.IST)}. Marseille à ${fin(r2)}.`};
   return{eb:"Voyage terminé",t:"De retour en France",s:`Arrivée à Marseille ${day(r2.a,TZ.MRS)}, ${hm(r2.a,TZ.MRS)}.`}}
 // --- écrans ---
-const I={now:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',vol:'<path d="M21 3 3 10l7 3 3 7z"/><path d="m10 13 5-5"/>',sej:'<path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>',bud:'<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><path d="M16 15h2"/>',urg:'<path d="M5 4h4l2 5-3 2a12 12 0 0 0 5 5l2-3 5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/>'};
+const I={now:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',vol:'<path d="M21 3 3 10l7 3 3 7z"/><path d="m10 13 5-5"/>',sej:'<path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>',bud:'<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><path d="M16 15h2"/>',todo:'<rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8 12 3 3 5-6"/>',urg:'<path d="M5 4h4l2 5-3 2a12 12 0 0 0 5 5l2-3 5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/>'};
 const TABS=[["now","Maintenant"],["vol","Vols"],["sej","Planning"],["urg","Urgences"]];
 let D,tab="now",up="",tick,B=null,ME=null;
 function legCard(v){const d=new Date(v.dep),a=new Date(v.arr),tf=TZ[v.from],tt=TZ[v.to];
@@ -100,12 +100,16 @@ const V={
   <div class="datel"><label class="small muted" for="bD">Date</label><input class="fi" id="bD" type="date" required></div>
   <p class="err" id="bE" role="alert" hidden></p><button class="btn" id="bS">Ajouter</button><button type="button" class="btn alt" id="bCancel" hidden>Annuler</button></form>
   <div id="bList" style="display:contents"></div><div id="bTok"></div><p class="small muted" id="bSt" style="text-align:center"></p>`},
+ todo(){return `<h1 class="h">To Do</h1><p class="small muted" id="tCount"></p>
+  <section class="card" id="tList" aria-label="Choses à faire"></section>
+  <form id="tF" class="card" autocomplete="off"><label class="sec" for="tI" style="margin:0">Ajouter une tâche</label><input class="fi" id="tI" maxlength="80" autocomplete="off" placeholder="Quoi ?"><button class="btn">Ajouter</button></form>
+  <p class="small muted" id="bSt" style="text-align:center"></p>`},
  urg(){return `<h1 class="h">Urgences</h1>
   <h2 class="sec" style="margin-top:0">Sur place, à Taïwan</h2>
   ${D.urgences.map(u=>`<div class="card"><b>${esc(u.nom)}</b>${u.note?`<span class="small muted">${esc(u.note)}</span>`:""}<div class="call"><b>${esc(u.tel)}</b><a href="tel:${esc(u.tel.replace(/[^+\d]/g,""))}">Appeler</a></div></div>`).join("")}
   <h2 class="sec">Avant de partir</h2>${D.avant.map(t=>`<div class="card"><b>${esc(t.titre)}</b><span class="small">${esc(t.texte)}</span></div>`).join("")}
   <div class="foot"><span>Mis à jour le ${esc(up)}</span><button class="btn alt" id="lockBtn">Verrouiller sur cet appareil</button></div>`}};
-function render(){const T=B?TABS.slice(0,3).concat([["bud","Budget"]],TABS.slice(3)):TABS;root.innerHTML=`<main class="page">${V[tab]()}</main><nav class="nav" style="grid-template-columns:repeat(${T.length},minmax(0,1fr))" aria-label="Rubriques">${T.map(([k,l])=>`<button data-tab="${k}" ${k===tab?'aria-current="page"':""}><svg viewBox="0 0 24 24" aria-hidden="true">${I[k]}</svg>${l}</button>`).join("")}</nav>`;scrollTo(0,0);if(tab==="bud")budOpen()}
+function render(){const T=B?TABS.slice(0,3).concat([["todo","To Do"],["bud","Budget"]],TABS.slice(3)):TABS;root.innerHTML=`<main class="page">${V[tab]()}</main><nav class="nav" style="grid-template-columns:repeat(${T.length},minmax(0,1fr))" aria-label="Rubriques">${T.map(([k,l])=>`<button data-tab="${k}" ${k===tab?'aria-current="page"':""}><svg viewBox="0 0 24 24" aria-hidden="true">${I[k]}</svg>${l}</button>`).join("")}</nav>`;scrollTo(0,0);if(tab==="bud")budOpen();if(tab==="todo")todoOpen()}
 root.addEventListener("click",async e=>{const b=e.target.closest("button");if(!b)return;
   if(b.dataset.tab){tab=b.dataset.tab;render()}
   else if(b.dataset.pay){budPay(b.dataset.pay)}
@@ -114,14 +118,16 @@ root.addEventListener("click",async e=>{const b=e.target.closest("button");if(!b
   else if(b.dataset.edit){budEdit(b.dataset.edit)}
   else if(b.dataset.del){await budDel(b.dataset.del,b)}
   else if(b.id==="bCancel"){budForm()}
+  else if(b.dataset.tdel){await todoDel(b.dataset.tdel,b)}
   else if(b.dataset.show){const x=document.getElementById(b.dataset.show),on=x.textContent.startsWith("•");x.textContent=on?x.dataset.sec:"••••••";b.textContent=on?"Cacher":"Afficher"}
   else if(b.id==="lockBtn"){await keyDel();D=null;B=null;ME=null;tab="now";clearInterval(tick);lock()}});
 // --- budget : chiffré pour 2 personnes, stocké dans un dépôt séparé de l'appli ---
 const LK="carnet_budget",api=()=>`https://api.github.com/repos/${B.repo}/contents/budget.json`;
-let BS={cfg:{maj:0},items:{}},sel={dev:"TWD",pay:null,edit:null,open:null},syncing=false;
+let BS={cfg:{maj:0},items:{},todo:{}},sel={dev:"TWD",pay:null,edit:null,open:null},syncing=false;
 const money=(n,d)=>new Intl.NumberFormat("fr-FR",{maximumFractionDigits:d==="EUR"?2:0,minimumFractionDigits:d==="EUR"?2:0}).format(n)+(d==="EUR"?" €":" NT$");
-function merge(a,b){const out={cfg:(b.cfg?.maj||0)>(a.cfg?.maj||0)?b.cfg:a.cfg,items:{...a.items}};
-  for(const[k,v]of Object.entries(b.items||{}))if(!out.items[k]||v.maj>out.items[k].maj)out.items[k]=v;return out}
+function merge(a,b){const out={cfg:(b.cfg?.maj||0)>(a.cfg?.maj||0)?b.cfg:a.cfg,items:{...a.items},todo:{...(a.todo||{})}};
+  for(const[k,v]of Object.entries(b.items||{}))if(!out.items[k]||v.maj>out.items[k].maj)out.items[k]=v;
+  for(const[k,v]of Object.entries(b.todo||{}))if(!out.todo[k]||v.maj>out.todo[k].maj)out.todo[k]=v;return out}
 const pubs=()=>B.membres.map(m=>m.pub);
 async function saveLocal(dirty){try{localStorage.setItem(LK,JSON.stringify({env:await sealEnv(BS,pubs()),dirty}))}catch(e){}}
 async function loadLocal(){try{const x=JSON.parse(localStorage.getItem(LK));if(x){const o=await openEnv(x.env,ME);if(o)BS=merge(BS,o);return!!x.dirty}}catch(e){}return false}
@@ -144,7 +150,7 @@ async function sync(forceDirty){if(window.__DEMO)return;if(syncing){again=true;r
       if(p.status===401||p.status===403||p.status===404){await saveLocal(true);stat("L'accès GitHub est refusé ou expiré. Tes dépenses restent sur ce téléphone.");break}
       throw p.status}
   }catch(e){await saveLocal(dirty);stat(dirty?"Pas de réseau. Dépenses gardées ici, envoi plus tard.":"Pas de réseau. Dernière version enregistrée.")}
-  syncing=false;drawB();if(again){again=false;sync()}}
+  syncing=false;drawB();drawT();if(again){again=false;sync()}}
 const short=n=>n.length>7?n.slice(0,3)+".":n;
 const RMIN=20,RMAX=60,okRate=t=>t>=RMIN&&t<=RMAX,rate=()=>{const t=+BS.cfg.taux;return okRate(t)?t:+B.taux};
 function drawB(){if(!$("#bList"))return;conv();const L=Object.values(BS.items).filter(i=>!i.suppr).sort((a,b)=>b.date.localeCompare(a.date)||b.maj-a.maj),tot=[0,0];L.forEach(i=>tot[i.paye]+=i.eur);
@@ -173,7 +179,20 @@ async function budOpen(){budForm();$("#bC").oninput=()=>conv("twd");$("#bCe").on
     BS.items[id]={id,lib:$("#bL").value.trim().slice(0,80),mont:n,dev:sel.dev,taux,eur:sel.dev==="EUR"?n:Math.round(n/taux*100)/100,date:$("#bD").value,paye:sel.pay,maj:Date.now()};
     sel.open=null;await saveLocal(true);budForm();drawB();sync(true)};
   await loadLocal();drawB();sync()}
-addEventListener("online",()=>{if(B&&tab==="bud")sync()});
+addEventListener("online",()=>{if(B&&(tab==="bud"||tab==="todo"))sync()});
+// --- To Do : même coffre chiffré que le budget, partagé entre les 2 téléphones ---
+const TODO0=["Définir l'itinéraire","Réserver les logements","Réserver la voiture sur Chailease","Réserver l'assurance Chapka"].map((lib,i)=>({id:"t"+(i+1),lib,fait:false,ordre:i+1,maj:0}));
+const todos=()=>{const A={};TODO0.forEach(t=>A[t.id]=t);Object.entries(BS.todo||{}).forEach(([k,v])=>{if(!A[k]||v.maj>=A[k].maj)A[k]=v});return Object.values(A).filter(t=>!t.suppr).sort((a,b)=>a.ordre-b.ordre)};
+function drawT(){const box=$("#tList");if(!box)return;const L=todos(),n=L.filter(t=>t.fait).length;
+  $("#tCount").textContent=!L.length?"":n===L.length?"Tout est fait. Bravo !":`${n} sur ${L.length} fait${n>1?"s":""}.`;
+  box.innerHTML=L.length?L.map(t=>`<div class="ti${t.fait?" done":""}"><label class="check"><input type="checkbox" data-todo="${esc(t.id)}" ${t.fait?"checked":""}><span>${esc(t.lib)}</span></label><button type="button" class="tx" data-tdel="${esc(t.id)}" aria-label="Supprimer : ${esc(t.lib)}">×</button></div>`).join(""):`<p class="small">Rien à faire pour l'instant.</p>`}
+const todoSet=async(id,ch)=>{const t=todos().find(x=>x.id===id);if(!t)return;BS.todo={...BS.todo,[id]:{...t,...ch,maj:Date.now()}};await saveLocal(true);drawT();sync(true)};
+async function todoDel(id,btn){if(btn.dataset.sure!=="1"){btn.dataset.sure="1";btn.textContent="Supprimer ?";btn.classList.add("sure");return}await todoSet(id,{suppr:true})}
+root.addEventListener("change",e=>{const c=e.target.closest("[data-todo]");if(c)todoSet(c.dataset.todo,{fait:c.checked})});
+async function todoOpen(){$("#tF").onsubmit=async e=>{e.preventDefault();const v=$("#tI").value.trim().slice(0,80);if(!v)return;
+    const id="t"+Date.now().toString(36)+u8(crypto.getRandomValues(new Uint8Array(3))).replace(/\W/g,"");$("#tI").value="";
+    BS.todo={...BS.todo,[id]:{id,lib:v,fait:false,ordre:Date.now(),maj:Date.now()}};await saveLocal(true);drawT();sync(true)};
+  drawT();await loadLocal();drawT();sync()}
 async function initB(priv){ME=priv;B=null;if(window.__DEMO_B){B=window.__DEMO_B.acces;BS=window.__DEMO_B.etat;return}
   if(F&&F.prive){try{const o=await openEnv(F.prive,priv);if(o&&o.budget)B=o.budget}catch(e){}}}
 function start(data,when){D=data;up=when;render();clearInterval(tick);tick=setInterval(()=>{const a=$("#cT"),f=$("#cF"),n=nowD();if(a){a.textContent=hm(n,TZ.TPE);f.textContent=hm(n,TZ.MRS);$("#dT").textContent=day(n,TZ.TPE);$("#dF").textContent=day(n,TZ.MRS)}},2e4)}
