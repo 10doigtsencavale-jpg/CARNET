@@ -58,8 +58,10 @@ function status(D){const n=nowD(),L=D.vols.map(v=>({...v,d:new Date(v.dep),a:new
   return{eb:"Voyage terminé",t:"De retour en France",s:`Arrivée à Marseille ${day(r2.a,TZ.MRS)}, ${hm(r2.a,TZ.MRS)}.`}}
 // --- écrans ---
 const I={now:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',vol:'<path d="M21 3 3 10l7 3 3 7z"/><path d="m10 13 5-5"/>',sej:'<path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>',bud:'<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><path d="M16 15h2"/>',todo:'<rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8 12 3 3 5-6"/>',urg:'<path d="M5 4h4l2 5-3 2a12 12 0 0 0 5 5l2-3 5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/>'};
-const TABS=[["now","Maintenant"],["vol","Vols"],["sej","Planning"],["urg","Urgences"]];
-let D,tab="now",up="",tick,B=null,ME=null;
+I.voy='<path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/>';I.res='<path d="M3 8a2 2 0 0 0 2-2h14a2 2 0 0 0 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-2a2 2 0 0 0 0-4z"/><path d="M14 6v12"/>';
+const TABS0=[["now","Maintenant"],["vol","Vols"],["sej","Planning"],["urg","Urgences"]];
+const TABS=()=>VY?[["voy","Voyage"],["res","Réserv."],["vol","Vols"]].concat(B?[["todo","To Do"],["bud","Budget"]]:[],[["urg","Urgences"]]):(B?TABS0.slice(0,3).concat([["todo","To Do"],["bud","Budget"]],TABS0.slice(3)):TABS0);
+let D,tab="now",up="",tick,B=null,ME=null,VY=null,VF=null;
 function legCard(v){const d=new Date(v.dep),a=new Date(v.arr),tf=TZ[v.from],tt=TZ[v.to];
   return `<article class="card leg"><div class="top"><span class="fl">${esc(v.vol)}</span><span class="tag ${v.sens==="Aller"?"":"b"}">${esc(v.sens)}</span></div>
   <div class="tl"><b>${hm(d,tf)}</b><span>${esc(v.fromN)} (${esc(v.from)})</span><span class="d">${day(d,tf)}</span><b>${hm(a,tt)}</b><span>${esc(v.toN)} (${esc(v.to)})</span><span class="d">${day(a,tt)}</span></div>
@@ -76,7 +78,111 @@ function planning(D){const M={},add=(k,x)=>(M[k]=M[k]||[]).push(x);
   for(let t=Date.parse(K[0]+"T12:00:00Z"),f=Date.parse(K[K.length-1]+"T12:00:00Z");t<=f;t+=864e5){const k=new Date(t).toISOString().slice(0,10);
     if(M[k]){vide=null;out.push({k,label:lab(k),it:M[k]})}else if(vide){vide.label=vide.d+" au "+lab(k)}else{vide={vide:true,d:lab(k),label:lab(k)};out.push(vide)}}
   return out}
+// --- voyage : programme et réservations, chiffrés pour les 4 (voyage.json + état partagé) ---
+const U={et:null,pt:"prog",view:"list",rx:null};
+let ES={prog:{},resa:{}},eSyncing=false,eAgain=false;
+const NC={1:["#FFF1B3","#4A3B00"],2:["#FFD9AE","#5C3000"],3:["#FAD0DA","#6B1F38"],4:["#F5B5AC","#6B160E"]},nc=n=>NC[Math.min(Math.max(n,1),4)];
+const MODE={car:["#E6D3BE","#5A3A1E","Voiture"],boat:["#CDE8F7","#17506E","Bateau"],plane:["#1F3A6B","#FFFFFF","Avion"],scooter:["#E3E5E8","#333C47","Scooter"],train:["#E3E5E8","#333C47","Train"],permit:["#EDE6F7","#43296B","Permis"]};
+const MI={car:'<path d="M3 16v-3l2.5-5h13l2.5 5v3z"/><circle cx="7.5" cy="17.5" r="1.8"/><circle cx="16.5" cy="17.5" r="1.8"/>',boat:'<path d="M3 15h18l-2.5 4.5h-13z"/><path d="M12 3v12"/><path d="M12 4l6 8h-6"/>',scooter:'<circle cx="6" cy="17" r="2.5"/><circle cx="18" cy="17" r="2.5"/><path d="M8.5 17h7"/><path d="M15.5 17l-2.5-10h3"/><path d="M5 14l3-3h5"/>',plane:'<path d="M2.5 13.5l19-6.5-4 12-4.5-4.5-3.5 3.5v-5z"/>',train:'<rect x="6" y="3" width="12" height="13" rx="3"/><path d="M6 10h12"/><path d="M9 20l-2 2"/><path d="M15 20l2 2"/>',permit:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h3"/>'};
+const mic=(m,s=16)=>`<svg class="mi" width="${s}" height="${s}" viewBox="0 0 24 24" aria-hidden="true">${MI[m]||""}</svg>`;
+const DD=s=>new Date(s+"T12:00:00Z"),ds=d=>d.toISOString().slice(0,10),addD=(s,n)=>ds(new Date(DD(s).getTime()+n*864e5));
+const fd=(s,o)=>fmt(DD(s),"UTC",o),dLong=s=>fd(s,{weekday:"short",day:"numeric",month:"short"}),dShort=s=>fd(s,{day:"numeric",month:"short"});
+const nw=n=>n>1?"nuits":"nuit",shortN=n=>n==="Xiaoliuqiu"?"Liuqiu":n;
+const etDates=e=>{const f=addD(e.du,e.nuits-1),m1=fd(e.du,{month:"short"}),m2=fd(f,{month:"short"});return e.nuits===1?dShort(e.du):(m1===m2?fd(e.du,{day:"numeric"}).replace(/^1$/,"1er")+"-"+dShort(f):dShort(e.du)+" - "+dShort(f))};
+const canW=()=>!!B&&!window.__DEMO_RO;
+const mergeE=(a,b)=>{const o={prog:{...(a.prog||{})},resa:{...(a.resa||{})}};for(const k of["prog","resa"])for(const[i,v]of Object.entries(b[k]||{}))if(!o[k][i]||v.maj>o[k][i].maj)o[k][i]=v;return o};
+const resa=id=>{const a=(VY.resa_init||{})[id],b=ES.resa[id];return(!a?b:!b?a:(b.maj>a.maj?b:a))||{statut:"todo"}};
+const isOk=id=>resa(id).statut==="ok";
+async function initV(priv){VY=null;ES={prog:{},resa:{}};if(VF&&VF.data){try{VY=await openEnv(VF.data,priv)}catch(e){}}}
+const EK="carnet_etat",eApi=()=>`https://api.github.com/repos/${VY.etat.repo}/contents/${VY.etat.path}`,allPubs=()=>F.slots.map(s=>s.pub);
+async function eSave(dirty){try{localStorage.setItem(EK,JSON.stringify({env:await sealEnv(ES,allPubs()),dirty}))}catch(e){}}
+async function eLoad(){try{const x=JSON.parse(localStorage.getItem(EK));if(x){const o=await openEnv(x.env,ME);if(o)ES=mergeE(ES,o);return!!x.dirty}}catch(e){}return false}
+const eStat=t=>{const e=$("#eSt");if(e)e.textContent=t};
+const eTok=()=>B?BS.cfg.token:null;
+async function eSync(force){if(window.__DEMO||!VY)return;if(eSyncing){eAgain=true;return}eSyncing=true;let dirty=force||await eLoad();
+  try{if(B)await loadLocal();
+    for(let n=0;n<4;n++){const h={Accept:"application/vnd.github+json"},tok=eTok();if(tok)h.Authorization="Bearer "+tok;
+      const r=await fetch(eApi(),{headers:h,cache:"no-store"});let sha=null;
+      if(r.ok){const j=await r.json();sha=j.sha;const o=await openEnv(JSON.parse(atob(j.content.replace(/\s/g,""))),ME);if(o){dirty=dirty||JSON.stringify(mergeE(o,ES))!==JSON.stringify(o);ES=mergeE(ES,o)}}
+      else if(r.status===404){dirty=dirty||Object.keys(ES.prog).length+Object.keys(ES.resa).length>0}else throw r.status;
+      if(!dirty){await eSave(false);eStat("À jour.");break}
+      if(!tok){await eSave(true);eStat(B?"Changements gardés sur ce téléphone. Reliez l'accès GitHub dans Budget pour les partager.":"Lecture seule.");break}
+      const body={message:"maj",content:btoa(JSON.stringify(await sealEnv(ES,allPubs())))};if(sha)body.sha=sha;
+      const p=await fetch(eApi(),{method:"PUT",headers:{Accept:"application/vnd.github+json",Authorization:"Bearer "+tok},body:JSON.stringify(body)});
+      if(p.ok){dirty=false;await eSave(false);eStat("Partagé avec vous 4.");break}
+      if(p.status===409||p.status===422)continue;
+      if(p.status===401||p.status===403||p.status===404){await eSave(true);eStat("L'accès GitHub est refusé ou expiré. Changements gardés ici.");break}
+      throw p.status}
+  }catch(e){await eSave(dirty);eStat(dirty?"Pas de réseau. Changements gardés ici, envoi plus tard.":"Pas de réseau. Dernière version enregistrée.")}
+  eSyncing=false;if(tab==="voy"||tab==="res"){const y=scrollY;render();scrollTo(0,y)}if(eAgain){eAgain=false;eSync()}}
+let eOpened=false;async function etatOpen(){if(eOpened)return;eOpened=true;await eLoad();const y=scrollY;render();scrollTo(0,y);eSync()}
+addEventListener("online",()=>{if(VY)eSync()});
+async function ideaToggle(id){if(!canW())return;const on=!(ES.prog[id]&&ES.prog[id].on);ES.prog={...ES.prog,[id]:{on,maj:Date.now()}};await eSave(true);const y=scrollY;render();scrollTo(0,y);eSync(true)}
+// calendrier
+function cal(){const E=VY.etapes,w0=(()=>{const d=DD(VY.debut),k=(d.getUTCDay()+6)%7;return addD(VY.debut,-k)})(),fin=VY.fin,weeks=[];
+  const today=key(nowD(),TZ.TPE),inT=s=>s>=VY.debut&&s<=fin,hol=s=>/-12-25$|-01-01$/.test(s);
+  const pieces=(du,au,w)=>{const a=w,b=addD(w,6);if(au<a||du>b)return null;const s=du<a?a:du,e=au>b?b:au;return{c1:Math.round((DD(s)-DD(a))/864e5)+1,c2:Math.round((DD(e)-DD(a))/864e5)+1,l:du<a,r:au>b}};
+  const bar=(p,txt,bg,fg,icon,cls="")=>`<span class="bar ${cls}" style="grid-column:${p.c1}/${p.c2+1};background:${bg};color:${fg};border-radius:${p.l&&p.r?"0":p.l?"0 5px 5px 0":p.r?"5px 0 0 5px":"5px"}">${icon?mic(icon,13):""}<span>${esc(txt)}</span></span>`;
+  for(let w=w0;w<=fin;w=addD(w,7)){const days=[...Array(7)].map((_,i)=>addD(w,i));
+    const L1=E.map(e=>{const p=pieces(e.du,addD(e.du,e.nuits-1),w);if(!p)return"";const n=p.c2-p.c1+1,c=nc(e.nuits);return bar(p,n>=3?shortN(e.nom)+" · "+e.nuits+" "+nw(e.nuits):n===2?shortN(e.nom)+" · "+e.nuits+" n":shortN(e.nom),c[0],c[1],"","st")}).join("")+(days.includes(fin)?bar(pieces(fin,fin,w),"Départ","#6B7470","#FFFFFF",""):"");
+    const L2=VY.transports.map(t=>{const p=pieces(t.du,t.au,w);if(!p)return"";const m=MODE[t.mode];return bar(p,"",m[0],m[1],t.mode)}).join("");
+    const L3=VY.evenements.map(v=>{const p=pieces(v.d,v.d,w);if(!p)return"";return v.k==="plane"?bar(p,v.t,MODE.plane[0],MODE.plane[1],"plane"):v.k==="nye"?bar(p,v.t,"#EDE6F7","#43296B","","ev nye"):bar(p,v.t,"#FFFFFF","var(--fg)","","ev")}).join("");
+    weeks.push(`<div class="wk"><div class="g7">${days.map(d=>`<span class="dn${inT(d)?" in":""}${hol(d)?" hol":""}${d===today?" tod":""}">${fd(d,{day:"numeric"})}</span>`).join("")}</div>${[L1,L2,L3].filter(x=>x).map(x=>`<div class="g7 ln7">${x}</div>`).join("")}</div>`)}
+  return`<section class="cal card" aria-label="Calendrier du voyage"><div class="g7 wd">${["lun.","mar.","mer.","jeu.","ven.","sam.","dim."].map(x=>`<span>${x}</span>`).join("")}</div>${weeks.join("")}</section>
+  <div class="lg">${[1,2,3,4].map(n=>`<span><i style="background:${NC[n][0]}"></i>${n===4?"4 nuits et +":n+" "+nw(n)}</span>`).join("")}</div>
+  <div class="lg">${["car","boat","plane","scooter","train"].map(m=>`<span class="chip" style="background:${MODE[m][0]};color:${MODE[m][1]}">${mic(m,14)}${MODE[m][2]}</span>`).join("")}</div>`}
+function carte(){const E=VY.etapes,seen={},pins=[];E.forEach((e,i)=>{const k=e.pin.join();if(seen[k]){seen[k].n=Math.max(seen[k].n,e.nuits);seen[k].ok=seen[k].ok&&isOk(e.id);return}seen[k]={e,i,n:e.nuits,ok:isOk(e.id)};pins.push(seen[k])});
+  const pts=[[VY.aeroport.x,VY.aeroport.y]].concat(E.map(e=>e.pin)).map(p=>p.join(",")).join(" ");
+  return`<div class="mapbox"><svg viewBox="0 0 300 560" role="img" aria-label="Carte schématique de Taïwan avec les étapes numérotées"><polygon points="221.9,15.6 251.2,38.9 276.3,43.6 286.0,62.2 265.1,101.1 265.1,126.0 251.2,171.1 233.0,217.8 216.3,280.0 202.3,342.2 174.4,404.4 139.5,458.9 129.8,513.3 125.6,544.4 108.8,539.8 104.7,513.3 90.7,474.4 62.8,451.1 44.7,432.4 27.9,373.3 20.9,311.1 34.9,248.9 62.8,194.4 83.7,155.6 132.6,93.3 153.5,54.4 202.3,35.8" fill="#EFE6D2" stroke="#A9B4B0" stroke-width="2"/>
+  <polyline points="${pts}" fill="none" stroke="#2B3A67" stroke-width="3" stroke-dasharray="7 6" stroke-linejoin="round"/>
+  <circle cx="${VY.aeroport.x}" cy="${VY.aeroport.y}" r="5" fill="#1F3A6B"/><text x="${VY.aeroport.x-12}" y="${VY.aeroport.y-12}" text-anchor="middle" font-size="11" font-weight="700" fill="#1F3A6B">aéroport</text>
+  ${pins.map(p=>{const lab=p.e.pinLabel||String(p.i+1),r=lab.length>2?16:14,c=nc(p.n);return`<g class="pin"><circle cx="${p.e.pin[0]}" cy="${p.e.pin[1]}" r="${r}" fill="${c[0]}" stroke="${p.ok?"#2F8F4E":"#8A9099"}" stroke-width="4"/><text x="${p.e.pin[0]}" y="${p.e.pin[1]+(lab.length>1?4.2:5)}" text-anchor="middle" font-size="${lab.length>1?11:14}" font-weight="700" fill="#1C2433">${esc(lab)}</text></g>`}).join("")}</svg>
+  <div class="lg"><span><i class="ring"></i>À réserver</span><span><i class="ring ok"></i>Réservé</span><span>Couleur = nombre de nuits</span></div>
+  <div class="pinl">${E.map((e,i)=>`<button class="sm" data-et="${esc(e.id)}">${i+1}. ${esc(e.nom)}</button>`).join("")}</div></div>`}
+function etapeList(){return`<div class="stl">${VY.etapes.map((e,i)=>{const c=nc(e.nuits);return`<button class="strow" data-et="${esc(e.id)}"><span class="badge" style="background:${c[0]};color:${c[1]}">${i+1}</span><span class="nm"><b>${esc(e.nom)}</b><small>${esc(etDates(e))} ${e.modes.map(m=>mic(m,15)).join("")}</small></span><span class="rs ${isOk(e.id)?"ok":""}">${isOk(e.id)?"Réservé":"À réserver"}</span><span class="nn"><b>${e.nuits}</b><small>${nw(e.nuits)}</small></span></button>`}).join("")}</div>`}
+function etape(){const E=VY.etapes,i=E.findIndex(e=>e.id===U.et),e=E[i];if(!e){U.et=null;return V.voy()}
+  const r=resa(e.id),c=nc(e.nuits),added=e.idees.filter(x=>ES.prog[x.id]&&ES.prog[x.id].on),ro=!canW();
+  const CAT={Sport:["#E3EEF9","#1F3F6B"],Aventure:["#FBE3D6","#7A2E0B"],Cuisine:["#FFF1C7","#5E4300"],Culture:["#EDE6F7","#43296B"],Nature:["#DDF2E3","#1E4D2E"]};
+  return`<button class="lnk" data-back>← Toutes les étapes</button>
+  <header class="eth"><div><span class="eb">Étape ${i+1} sur ${E.length}</span><h1>${esc(e.nom)}</h1><span>Arrivée ${esc(dLong(e.du))} · départ ${esc(dLong(addD(e.du,e.nuits)))}</span><span class="small">${e.modes.map(m=>mic(m,15)).join("")} ${esc(e.acces)}</span></div><div class="nb" style="background:${c[0]};color:${c[1]}"><b>${e.nuits}</b><span>${nw(e.nuits)}</span></div></header>
+  <section class="card"><div class="kv"><span><b class="t2">Logement</b><br><span class="small">${esc(e.logement.ou)}</span></span><button class="rs btn2 ${r.statut==="ok"?"ok":""}" data-rx="${esc(e.id)}">${r.statut==="ok"?"Réservé":"À réserver"}</button></div>
+  ${r.statut==="ok"?`<p class="small">${esc([r.plateforme,r.prix].filter(Boolean).join(" · "))}${r.lien?` · <a href="${esc(r.lien)}" target="_blank" rel="noopener noreferrer">Ouvrir la réservation</a>`:""}</p>`:`<p class="small muted">Idées : ${esc(e.logement.idees)}${e.logement.prix?". Prix indicatif : "+esc(e.logement.prix):""}</p>`}</section>
+  <div class="tabs2" role="tablist"><button role="tab" data-pt="prog" aria-selected="${U.pt==="prog"}">Programme (${e.jours.length+added.length})</button><button role="tab" data-pt="idees" aria-selected="${U.pt==="idees"}">Idées (${e.idees.length})</button></div>
+  ${U.pt==="prog"?e.jours.map(j=>`<article class="card dj"><b>${esc(dLong(j.d))}</b><span>${esc(j.t)}</span></article>`).join("")+(added.length?`<h2 class="sec">Ajouté depuis les idées</h2>${added.map(x=>`<div class="card ad"><b>${esc(x.t)}</b>${ro?"":`<button class="sm" data-idea="${esc(x.id)}">Retirer</button>`}</div>`).join("")}`:"")
+  :`<p class="small muted">Nos recommandations. ${ro?"Seuls les 2 téléphones du voyage peuvent les ajouter au programme.":"Ajoutez celles qui vous tentent au programme."}</p>${e.idees.map(x=>{const on=ES.prog[x.id]&&ES.prog[x.id].on,k=CAT[x.cat]||CAT.Culture;return`<div class="card idea"><span class="it"><span><i class="cat" style="background:${k[0]};color:${k[1]}">${esc(x.cat)}</i> <b>${esc(x.t)}</b></span><small class="muted">${esc(x.n)}</small></span>${ro?(on?'<span class="rs ok">Au programme</span>':""):`<button class="tg${on?" on":""}" data-idea="${esc(x.id)}" aria-pressed="${!!on}">${on?"✓ Au programme":"Ajouter"}</button>`}</div>`}).join("")}`}
+  <p class="small muted" id="eSt" style="text-align:center"></p>`}
+function resaForm(id,r,isT){return`<form class="rf" data-rf="${esc(id)}" data-statut="${esc(r.statut||"todo")}" autocomplete="off">
+  <div class="seg" role="group" aria-label="Statut"><button type="button" data-rstat="todo" aria-pressed="${r.statut!=="ok"}">À réserver</button><button type="button" data-rstat="ok" aria-pressed="${r.statut==="ok"}">Réservé</button></div>
+  <label class="small">${isT?"Loueur ou compagnie":"Plateforme ou hôtel"}<input class="fi" name="plateforme" maxlength="80" value="${esc(r.plateforme||"")}"></label>
+  <div class="two"><label class="small">Prix<input class="fi" name="prix" maxlength="40" value="${esc(r.prix||"")}"></label><label class="small">N° de réservation<input class="fi" name="code" maxlength="60" autocapitalize="off" spellcheck="false" value="${esc(r.code||"")}"></label></div>
+  <label class="small">Lien<input class="fi" name="lien" maxlength="300" inputmode="url" autocapitalize="off" spellcheck="false" value="${esc(r.lien||"")}"></label>
+  <label class="small">Note<input class="fi" name="note" maxlength="200" value="${esc(r.note||"")}"></label>
+  <button class="btn">Enregistrer</button></form>`}
+function resaRow(id,nuits,titre,sous,isT,icon){const r=resa(id),ok=r.statut==="ok",open=U.rx===id,ro=!canW();
+  return`<div class="card rr${open?" open":""}" id="rx-${esc(id)}"><button class="rh" data-rx="${esc(id)}" aria-expanded="${open}"><span class="nn">${nuits?`<b>${nuits}</b><small>n.</small>`:mic(icon,20)}</span><span class="nm"><b>${esc(titre)}</b><small>${esc(sous)}</small></span><span class="rs ${ok?"ok":r.option?"opt":""}">${ok?"Réservé":"À réserver"}</span></button>
+  ${open?(ok?`<div class="rd">${r.plateforme?`<div class="kv"><span>${isT?"Loueur":"Où"}</span><b>${esc(r.plateforme)}</b></div>`:""}${r.prix?`<div class="kv"><span>Prix</span><b>${esc(r.prix)}</b></div>`:""}${r.code?secret("rc-"+id,"N° de réservation",r.code):""}${r.lien?`<a class="btn alt" href="${esc(r.lien)}" target="_blank" rel="noopener noreferrer">Ouvrir la réservation</a>`:""}${r.note?`<p class="small">${esc(r.note)}</p>`:""}</div>`:"")+(ro?(ok?"":`<p class="small muted">Pas encore réservé.</p>`):resaForm(id,r,isT)):""}</div>`}
+const V2={
+ voy(){if(U.et)return etape();const E=VY.etapes,n=E.reduce((a,e)=>a+e.nuits,0),ok=E.filter(e=>isOk(e.id)).length,s=status(D);
+  return`<span class="kick">Carnet</span><h1 class="h">Taïwan · ${esc(dShort(VY.debut))} → ${esc(dShort(VY.fin))}</h1><p class="small muted">${n} nuits · ${E.length} étapes · ${ok}/${E.length} logements réservés</p>
+  <section class="now" aria-live="polite"><span class="eb">${esc(s.eb)}</span><span class="t">${esc(s.t)}</span><span class="small">${esc(s.s)}</span></section>
+  ${cal()}
+  <div class="tabs2" role="tablist"><button role="tab" data-view="list" aria-selected="${U.view==="list"}">Liste des étapes</button><button role="tab" data-view="map" aria-selected="${U.view==="map"}">Carte</button></div>
+  ${U.view==="map"?carte():etapeList()}<p class="small muted" id="eSt" style="text-align:center"></p>`},
+ res(){const E=VY.etapes,byId={};E.forEach((e,i)=>byId[e.id]={e,i});const L=VY.urgence_logements.filter(id=>byId[id]),T=VY.transports_resa,ok=L.filter(isOk).length,okT=T.filter(t=>isOk(t.id)).length;
+  return`<span class="kick">Carnet</span><h1 class="h">Réservations</h1>
+  <div class="two cnt"><div class="card"><span class="small muted">Logements</span><b>${ok} / ${L.length}</b><i class="pg"><i style="width:${Math.max(3,ok/L.length*100)}%"></i></i></div><div class="card"><span class="small muted">Transports</span><b>${okT} / ${T.length}</b><i class="pg"><i style="width:${Math.max(3,okT/T.length*100)}%"></i></i></div></div>
+  <h2 class="sec">Logements · dans l'ordre d'urgence</h2>
+  ${L.map(id=>{const e=byId[id].e;return resaRow(id,e.nuits,e.nom,etDates(e)+((VY.notes_logements||{})[id]?" · "+VY.notes_logements[id]:""),false)}).join("")}
+  <h2 class="sec">Transports</h2>
+  ${T.map(t=>resaRow(t.id,0,t.t,t.d+(t.option?" · facultatif":""),true,t.kind)+(U.rx===t.id&&t.n?`<p class="small muted tn">${esc(t.n)}</p>`:"")).join("")}
+  <p class="small muted lockline"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>Numéros et liens chiffrés, visibles par vous 4 seulement.</p>
+  <p class="small muted" id="eSt" style="text-align:center"></p>`}};
+root.addEventListener("submit",async e=>{const f=e.target.closest("[data-rf]");if(!f)return;e.preventDefault();if(!canW())return;const id=f.dataset.rf,g=n=>f.elements[n].value.trim();
+  let lien=g("lien");if(lien&&!/^https:\/\//i.test(lien))lien="";
+  ES.resa={...ES.resa,[id]:{statut:f.dataset.statut==="ok"?"ok":"todo",plateforme:g("plateforme"),prix:g("prix"),code:g("code"),lien,note:g("note"),maj:Date.now()}};
+  U.rx=null;await eSave(true);render();const x=document.getElementById("rx-"+id);if(x)x.scrollIntoView({block:"center"});eSync(true)});
 const V={
+ voy(){return V2.voy()},res(){return V2.res()},
  now(){const s=status(D),n=nowD(),next=D.vols.find(v=>new Date(v.dep)>n);return `<h1 class="h">${esc(D.titre)}</h1>
   <section class="now" aria-live="polite"><span class="eb">${esc(s.eb)}</span><span class="t">${esc(s.t)}</span><span>${esc(s.s)}</span></section>
   <div class="clocks"><div class="clock"><b id="cT">${hm(n,TZ.TPE)}</b><span>Taïwan</span><em id="dT">${day(n,TZ.TPE)}</em></div><div class="clock"><b id="cF">${hm(n,TZ.MRS)}</b><span>France</span><em id="dF">${day(n,TZ.MRS)}</em></div></div>
@@ -109,9 +215,16 @@ const V={
   ${D.urgences.map(u=>`<div class="card"><b>${esc(u.nom)}</b>${u.note?`<span class="small muted">${esc(u.note)}</span>`:""}<div class="call"><b>${esc(u.tel)}</b><a href="tel:${esc(u.tel.replace(/[^+\d]/g,""))}">Appeler</a></div></div>`).join("")}
   <h2 class="sec">Avant de partir</h2>${D.avant.map(t=>`<div class="card"><b>${esc(t.titre)}</b><span class="small">${esc(t.texte)}</span></div>`).join("")}
   <div class="foot"><span>Mis à jour le ${esc(up)}</span><button class="btn alt" id="lockBtn">Verrouiller sur cet appareil</button></div>`}};
-function render(){const T=B?TABS.slice(0,3).concat([["todo","To Do"],["bud","Budget"]],TABS.slice(3)):TABS;root.innerHTML=`<main class="page">${V[tab]()}</main><nav class="nav" style="grid-template-columns:repeat(${T.length},minmax(0,1fr))" aria-label="Rubriques">${T.map(([k,l])=>`<button data-tab="${k}" ${k===tab?'aria-current="page"':""}><svg viewBox="0 0 24 24" aria-hidden="true">${I[k]}</svg>${l}</button>`).join("")}</nav>`;scrollTo(0,0);if(tab==="bud")budOpen();if(tab==="todo")todoOpen()}
+function render(){const T=TABS();root.innerHTML=`<main class="page">${V[tab]()}</main><nav class="nav" style="grid-template-columns:repeat(${T.length},minmax(0,1fr))" aria-label="Rubriques">${T.map(([k,l])=>`<button data-tab="${k}" ${k===tab?'aria-current="page"':""}><svg viewBox="0 0 24 24" aria-hidden="true">${I[k]}</svg>${l}</button>`).join("")}</nav>`;scrollTo(0,0);if(tab==="bud")budOpen();if(tab==="todo")todoOpen();if(tab==="voy"||tab==="res")etatOpen()}
 root.addEventListener("click",async e=>{const b=e.target.closest("button");if(!b)return;
-  if(b.dataset.tab){tab=b.dataset.tab;render()}
+  if(b.dataset.tab){tab=b.dataset.tab;U.et=null;U.rx=null;render()}
+  else if(b.dataset.et){tab="voy";U.et=b.dataset.et;U.pt="prog";render()}
+  else if(b.dataset.back!==undefined){U.et=null;render()}
+  else if(b.dataset.view){U.view=b.dataset.view;render()}
+  else if(b.dataset.pt){U.pt=b.dataset.pt;render()}
+  else if(b.dataset.idea){await ideaToggle(b.dataset.idea)}
+  else if(b.dataset.rx){U.rx=U.rx===b.dataset.rx?null:b.dataset.rx;if(tab!=="res"){tab="res";U.et=null}render();const x=document.getElementById("rx-"+U.rx);if(x)x.scrollIntoView({block:"start"})}
+  else if(b.dataset.rstat){const f=b.closest("form");f.dataset.statut=b.dataset.rstat;f.querySelectorAll("[data-rstat]").forEach(x=>x.setAttribute("aria-pressed",x===b))}
   else if(b.dataset.pay){budPay(b.dataset.pay)}
   else if(b.dataset.dev){budDev(b.dataset.dev)}
   else if(b.dataset.row){sel.open=sel.open===b.dataset.row?null:b.dataset.row;drawB()}
@@ -120,7 +233,7 @@ root.addEventListener("click",async e=>{const b=e.target.closest("button");if(!b
   else if(b.id==="bCancel"){budForm()}
   else if(b.dataset.tdel){await todoDel(b.dataset.tdel,b)}
   else if(b.dataset.show){const x=document.getElementById(b.dataset.show),on=x.textContent.startsWith("•");x.textContent=on?x.dataset.sec:"••••••";b.textContent=on?"Cacher":"Afficher"}
-  else if(b.id==="lockBtn"){await keyDel();D=null;B=null;ME=null;tab="now";clearInterval(tick);lock()}});
+  else if(b.id==="lockBtn"){await keyDel();D=null;B=null;ME=null;VY=null;ES={prog:{},resa:{}};tab="now";clearInterval(tick);lock()}});
 // --- budget : chiffré pour 2 personnes, stocké dans un dépôt séparé de l'appli ---
 const LK="carnet_budget",api=()=>`https://api.github.com/repos/${B.repo}/contents/budget.json`;
 let BS={cfg:{maj:0},items:{},todo:{}},sel={dev:"TWD",pay:null,edit:null,open:null},syncing=false;
@@ -219,7 +332,7 @@ async function todoOpen(){$("#tF").onsubmit=async e=>{e.preventDefault();const v
   drawT();await loadLocal();drawT();sync()}
 async function initB(priv){ME=priv;B=null;if(window.__DEMO_B){B=window.__DEMO_B.acces;BS=window.__DEMO_B.etat;return}
   if(F&&F.prive){try{const o=await openEnv(F.prive,priv);if(o&&o.budget)B=o.budget}catch(e){}}}
-function start(data,when){D=data;up=when;render();clearInterval(tick);tick=setInterval(()=>{const a=$("#cT"),f=$("#cF"),n=nowD();if(a){a.textContent=hm(n,TZ.TPE);f.textContent=hm(n,TZ.MRS);$("#dT").textContent=day(n,TZ.TPE);$("#dF").textContent=day(n,TZ.MRS)}},2e4)}
+function start(data,when){D=data;up=when;if(VY&&tab==="now")tab="voy";render();clearInterval(tick);tick=setInterval(()=>{const a=$("#cT"),f=$("#cF"),n=nowD();if(a){a.textContent=hm(n,TZ.TPE);f.textContent=hm(n,TZ.MRS);$("#dT").textContent=day(n,TZ.TPE);$("#dF").textContent=day(n,TZ.MRS)}},2e4)}
 async function loadFile(){const r=await fetch("carnet.json");if(!r.ok)throw 0;return r.json()}
 const stamp=f=>new Date(f.updated).toLocaleDateString("fr-FR",{day:"numeric",month:"long",hour:"2-digit",minute:"2-digit"});
 let F;
@@ -233,9 +346,9 @@ function lock(msg){root.innerHTML=`<main class="page lock"><h1>Carnet</h1><p>Éc
   $("#f").onsubmit=async e=>{e.preventDefault();const g=$("#go"),p=$("#ph").value,k=$("#keep").checked;g.disabled=true;g.textContent="Ouverture…";await new Promise(r=>setTimeout(r,30));
     try{const priv=await privFromPhrase(F,p);if(!priv)return lock("Phrase incorrecte. Vérifie les 5 mots.");
       const d=await openData(F,priv);if(!d)return lock("Cette phrase n'ouvre plus le carnet. Demande une nouvelle phrase.");
-      if(k)await keyPut(priv);await initB(priv);start(d,stamp(F))}catch(x){lock("Ouverture impossible sur ce navigateur. Essaie Safari ou Chrome à jour.")}}}
+      if(k)await keyPut(priv);await initB(priv);await initV(priv);start(d,stamp(F))}catch(x){lock("Ouverture impossible sur ce navigateur. Essaie Safari ou Chrome à jour.")}}}
 (async()=>{if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
-  if(window.__DEMO){await initB(null);start(window.__DEMO,"(aperçu)");return}
-  try{F=await loadFile()}catch(e){root.innerHTML=`<main class="page lock"><h1>Carnet</h1><p class="err">Pas de connexion, et le carnet n'est pas encore enregistré sur ce téléphone. Ouvre-le une fois avec Internet.</p></main>`;return}
-  const k=await keyGet();if(k){const d=await openData(F,k).catch(()=>null);if(d){await initB(k);return start(d,stamp(F))}await keyDel();return lock("Le carnet a changé de clés. Écris ta nouvelle phrase.")}
+  if(window.__DEMO){await initB(null);VY=window.__DEMO_V||null;if(window.__DEMO_E)ES=window.__DEMO_E;start(window.__DEMO,"(aperçu)");return}
+  try{F=await loadFile();VF=await fetch("voyage.json").then(r=>r.ok?r.json():null).catch(()=>null)}catch(e){root.innerHTML=`<main class="page lock"><h1>Carnet</h1><p class="err">Pas de connexion, et le carnet n'est pas encore enregistré sur ce téléphone. Ouvre-le une fois avec Internet.</p></main>`;return}
+  const k=await keyGet();if(k){const d=await openData(F,k).catch(()=>null);if(d){await initB(k);await initV(k);return start(d,stamp(F))}await keyDel();return lock("Le carnet a changé de clés. Écris ta nouvelle phrase.")}
   lock()})();
