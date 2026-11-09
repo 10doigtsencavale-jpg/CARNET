@@ -35,7 +35,7 @@ h1,h2,h3,p{margin:0}h1,h2,h3{font-family:var(--round);font-weight:600;text-wrap:
 .foot{font-size:14px;color:var(--muted);text-align:center;display:flex;flex-direction:column;gap:8px;margin-top:8px}
 @media (prefers-reduced-motion:no-preference){.btn,.nav button{transition:opacity .15s}}
 .fi{color:var(--fg);width:100%;min-height:50px;border:1.5px solid var(--line);border-radius:6px;background:#fff;padding:0 12px}.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}.two>div{min-width:0;display:flex;flex-direction:column;gap:6px}
-.seg{display:grid;grid-template-columns:1fr 1fr;gap:6px}.seg button{min-height:48px;border:1.5px solid var(--line);border-radius:6px;background:transparent;font:600 15px var(--round);cursor:pointer}.seg button[aria-pressed=true]{background:var(--nav);color:var(--nav-fg);border-color:var(--nav)}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:6px}.seg button{min-height:48px;border:1.5px solid var(--line);border-radius:6px;background:transparent;font:600 15px var(--round);cursor:pointer}.seg button[aria-pressed=true]{background:var(--ink);color:#fff;border-color:var(--ink)}
 .tag.p0{background:var(--ink);color:var(--on)}.tag.p1{background:var(--nav);color:var(--nav-fg)}.exp .lib{font-size:17px;letter-spacing:0}.row{display:flex;gap:6px;flex-wrap:wrap}.nav button{font-size:13px;min-width:0;padding:0 1px;white-space:nowrap}
 [hidden]{display:none!important}#bSum{display:flex;flex-direction:column;gap:12px}#bTok:empty{display:none}
 .conv{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:8px;align-items:center}.cin{position:relative;min-width:0}.cin input{padding-right:42px}.cin span{position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px}.eq{font:600 20px var(--round)}
@@ -71,7 +71,7 @@ label.sec{font:600 19px var(--round)}
 .badge{width:30px;height:30px;border-radius:15px;display:flex;align-items:center;justify-content:center;font:700 14px var(--round);flex:none}
 .nm{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}.nm b{font:700 17px var(--round)}.nm small{font-size:14px;color:var(--muted);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .nn{display:flex;flex-direction:column;align-items:center;min-width:36px}.nn b{font:700 22px/1 var(--round)}.nn small{font-size:12px;color:var(--muted)}
-.rs{font:700 12px var(--body);border-radius:999px;padding:4px 9px;background:#E3E5E8;color:#333C47;white-space:nowrap}.rs.ok{background:#DDF2E3;color:#1E4D2E}.btn2{border:0;min-height:44px;cursor:pointer;padding:0 12px}
+.rs{font:700 12px var(--body);border-radius:999px;padding:4px 9px;background:#E3E5E8;color:#333C47;white-space:nowrap}.rs.ok{background:#DDF2E3;color:#1E4D2E}.rs.wait{background:#E7E0D2;color:#5A3A1E}.btn2{border:0;min-height:44px;cursor:pointer;padding:0 12px}
 .mapbox{background:#DDE6F0;border-radius:12px;padding:12px;display:flex;flex-direction:column;align-items:center;gap:10px}.mapbox svg{width:100%;max-width:300px;height:auto}.pinl{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}.pinl .sm{background:#fff}
 .lnk[data-back]{align-self:flex-start;text-decoration:none;font-weight:700}
 .eth{background:var(--ink);color:#fff;border-radius:12px;padding:16px;display:flex;justify-content:space-between;align-items:flex-end;gap:10px}.eth>div{display:flex;flex-direction:column;gap:3px;min-width:0}.eth .eb{font:700 12px var(--round);letter-spacing:.08em;text-transform:uppercase;opacity:.85}.eth h1{font:700 32px/1 var(--round)}.eth .small{display:flex;gap:6px;align-items:center;flex-wrap:wrap;opacity:.9}
@@ -84,3 +84,4 @@ label.sec{font:600 19px var(--round)}
 .rf{display:flex;flex-direction:column;gap:8px;border-top:1px dashed var(--line);padding-top:8px}.rf label{display:flex;flex-direction:column;gap:4px;color:var(--muted)}.rf .fi{color:var(--fg)}
 .tn{margin:-6px 4px 4px}.lockline{display:flex;gap:8px;align-items:center;justify-content:center}.lockline svg{fill:none;stroke:currentColor;stroke-width:2;flex:none}
 .btn.alt{background:#fff;border:1px solid var(--ink);color:var(--ink)}
+.rf .seg{grid-template-columns:repeat(3,minmax(0,1fr))}.rf .seg button{font-size:14px;padding:0 4px}

@@ -92,7 +92,7 @@ const etDates=e=>{const f=addD(e.du,e.nuits-1),m1=fd(e.du,{month:"short"}),m2=fd
 const canW=()=>!!B&&!window.__DEMO_RO;
 const mergeE=(a,b)=>{const o={prog:{...(a.prog||{})},resa:{...(a.resa||{})}};for(const k of["prog","resa"])for(const[i,v]of Object.entries(b[k]||{}))if(!o[k][i]||v.maj>o[k][i].maj)o[k][i]=v;return o};
 const resa=id=>{const a=(VY.resa_init||{})[id],b=ES.resa[id];return(!a?b:!b?a:(b.maj>a.maj?b:a))||{statut:"todo"}};
-const isOk=id=>resa(id).statut==="ok";
+const isOk=id=>resa(id).statut==="ok",isWait=id=>resa(id).statut==="wait",stLab=id=>isOk(id)?"Réservé":isWait(id)?"En attente":"À réserver",stCls=id=>isOk(id)?"ok":isWait(id)?"wait":"";
 async function initV(priv){VY=null;ES={prog:{},resa:{}};if(VF&&VF.data){try{VY=await openEnv(VF.data,priv)}catch(e){}}}
 const EK="carnet_etat",eApi=()=>`https://api.github.com/repos/${VY.etat.repo}/contents/${VY.etat.path}`,allPubs=()=>F.slots.map(s=>s.pub);
 async function eSave(dirty){try{localStorage.setItem(EK,JSON.stringify({env:await sealEnv(ES,allPubs()),dirty}))}catch(e){}}
@@ -139,27 +139,27 @@ function carte(){const E=VY.etapes,seen={},pins=[];E.forEach((e,i)=>{const k=e.p
   ${pins.map(p=>{const lab=p.e.pinLabel||String(p.i+1),r=lab.length>2?16:14,c=nc(p.n);return`<g class="pin"><circle cx="${p.e.pin[0]}" cy="${p.e.pin[1]}" r="${r}" fill="${c[0]}" stroke="${p.ok?"#2F8F4E":"#8A9099"}" stroke-width="4"/><text x="${p.e.pin[0]}" y="${p.e.pin[1]+(lab.length>1?4.2:5)}" text-anchor="middle" font-size="${lab.length>1?11:14}" font-weight="700" fill="#1C2433">${esc(lab)}</text></g>`}).join("")}</svg>
   <div class="lg"><span><i class="ring"></i>À réserver</span><span><i class="ring ok"></i>Réservé</span><span>Couleur = nombre de nuits</span></div>
   <div class="pinl">${E.map((e,i)=>`<button class="sm" data-et="${esc(e.id)}">${i+1}. ${esc(e.nom)}</button>`).join("")}</div></div>`}
-function etapeList(){return`<div class="stl">${VY.etapes.map((e,i)=>{const c=nc(e.nuits);return`<button class="strow" data-et="${esc(e.id)}"><span class="badge" style="background:${c[0]};color:${c[1]}">${i+1}</span><span class="nm"><b>${esc(e.nom)}</b><small>${esc(etDates(e))} ${e.modes.map(m=>mic(m,15)).join("")}</small></span><span class="rs ${isOk(e.id)?"ok":""}">${isOk(e.id)?"Réservé":"À réserver"}</span><span class="nn"><b>${e.nuits}</b><small>${nw(e.nuits)}</small></span></button>`}).join("")}</div>`}
+function etapeList(){return`<div class="stl">${VY.etapes.map((e,i)=>{const c=nc(e.nuits);return`<button class="strow" data-et="${esc(e.id)}"><span class="badge" style="background:${c[0]};color:${c[1]}">${i+1}</span><span class="nm"><b>${esc(e.nom)}</b><small>${esc(etDates(e))} ${e.modes.map(m=>mic(m,15)).join("")}</small></span><span class="rs ${stCls(e.id)}">${stLab(e.id)}</span><span class="nn"><b>${e.nuits}</b><small>${nw(e.nuits)}</small></span></button>`}).join("")}</div>`}
 function etape(){const E=VY.etapes,i=E.findIndex(e=>e.id===U.et),e=E[i];if(!e){U.et=null;return V.voy()}
   const r=resa(e.id),c=nc(e.nuits),added=e.idees.filter(x=>ES.prog[x.id]&&ES.prog[x.id].on),ro=!canW();
   const CAT={Sport:["#E3EEF9","#1F3F6B"],Aventure:["#FBE3D6","#7A2E0B"],Cuisine:["#FFF1C7","#5E4300"],Culture:["#EDE6F7","#43296B"],Nature:["#DDF2E3","#1E4D2E"]};
   return`<button class="lnk" data-back>← Toutes les étapes</button>
   <header class="eth"><div><span class="eb">Étape ${i+1} sur ${E.length}</span><h1>${esc(e.nom)}</h1><span>Arrivée ${esc(dLong(e.du))} · départ ${esc(dLong(addD(e.du,e.nuits)))}</span><span class="small">${e.modes.map(m=>mic(m,15)).join("")} ${esc(e.acces)}</span></div><div class="nb" style="background:${c[0]};color:${c[1]}"><b>${e.nuits}</b><span>${nw(e.nuits)}</span></div></header>
-  <section class="card"><div class="kv"><span><b class="t2">Logement</b><br><span class="small">${esc(e.logement.ou)}</span></span><button class="rs btn2 ${r.statut==="ok"?"ok":""}" data-rx="${esc(e.id)}">${r.statut==="ok"?"Réservé":"À réserver"}</button></div>
-  ${r.statut==="ok"?`<p class="small">${esc([r.plateforme,r.prix].filter(Boolean).join(" · "))}${r.lien?` · <a href="${esc(r.lien)}" target="_blank" rel="noopener noreferrer">Ouvrir la réservation</a>`:""}</p>`:`<p class="small muted">Idées : ${esc(e.logement.idees)}${e.logement.prix?". Prix indicatif : "+esc(e.logement.prix):""}</p>`}</section>
+  <section class="card"><div class="kv"><span><b class="t2">Logement</b><br><span class="small">${esc(e.logement.ou)}</span></span><button class="rs btn2 ${stCls(e.id)}" data-rx="${esc(e.id)}">${stLab(e.id)}</button></div>
+  ${r.statut==="ok"||r.statut==="wait"?`<p class="small">${esc([r.plateforme,r.prix].filter(Boolean).join(" · "))}${r.lien?` · <a href="${esc(r.lien)}" target="_blank" rel="noopener noreferrer">Ouvrir la réservation</a>`:""}</p>`:`<p class="small muted">Idées : ${esc(e.logement.idees)}${e.logement.prix?". Prix indicatif : "+esc(e.logement.prix):""}</p>`}</section>
   <div class="tabs2" role="tablist"><button role="tab" data-pt="prog" aria-selected="${U.pt==="prog"}">Programme (${e.jours.length+added.length})</button><button role="tab" data-pt="idees" aria-selected="${U.pt==="idees"}">Idées (${e.idees.length})</button></div>
   ${U.pt==="prog"?e.jours.map(j=>`<article class="card dj"><b>${esc(dLong(j.d))}</b><span>${esc(j.t)}</span></article>`).join("")+(added.length?`<h2 class="sec">Ajouté depuis les idées</h2>${added.map(x=>`<div class="card ad"><b>${esc(x.t)}</b>${ro?"":`<button class="sm" data-idea="${esc(x.id)}">Retirer</button>`}</div>`).join("")}`:"")
   :`<p class="small muted">Nos recommandations. ${ro?"Seuls les 2 téléphones du voyage peuvent les ajouter au programme.":"Ajoutez celles qui vous tentent au programme."}</p>${e.idees.map(x=>{const on=ES.prog[x.id]&&ES.prog[x.id].on,k=CAT[x.cat]||CAT.Culture;return`<div class="card idea"><span class="it"><span><i class="cat" style="background:${k[0]};color:${k[1]}">${esc(x.cat)}</i> <b>${esc(x.t)}</b></span><small class="muted">${esc(x.n)}</small></span>${ro?(on?'<span class="rs ok">Au programme</span>':""):`<button class="tg${on?" on":""}" data-idea="${esc(x.id)}" aria-pressed="${!!on}">${on?"✓ Au programme":"Ajouter"}</button>`}</div>`}).join("")}`}
   <p class="small muted" id="eSt" style="text-align:center"></p>`}
 function resaForm(id,r,isT){return`<form class="rf" data-rf="${esc(id)}" data-statut="${esc(r.statut||"todo")}" autocomplete="off">
-  <div class="seg" role="group" aria-label="Statut"><button type="button" data-rstat="todo" aria-pressed="${r.statut!=="ok"}">À réserver</button><button type="button" data-rstat="ok" aria-pressed="${r.statut==="ok"}">Réservé</button></div>
+  <div class="seg" role="group" aria-label="Statut"><button type="button" data-rstat="todo" aria-pressed="${r.statut!=="ok"&&r.statut!=="wait"}">À réserver</button><button type="button" data-rstat="wait" aria-pressed="${r.statut==="wait"}">En attente</button><button type="button" data-rstat="ok" aria-pressed="${r.statut==="ok"}">Réservé</button></div>
   <label class="small">${isT?"Loueur ou compagnie":"Plateforme ou hôtel"}<input class="fi" name="plateforme" maxlength="80" value="${esc(r.plateforme||"")}"></label>
   <div class="two"><label class="small">Prix<input class="fi" name="prix" maxlength="40" value="${esc(r.prix||"")}"></label><label class="small">N° de réservation<input class="fi" name="code" maxlength="60" autocapitalize="off" spellcheck="false" value="${esc(r.code||"")}"></label></div>
   <label class="small">Lien<input class="fi" name="lien" maxlength="300" inputmode="url" autocapitalize="off" spellcheck="false" value="${esc(r.lien||"")}"></label>
   <label class="small">Note<input class="fi" name="note" maxlength="200" value="${esc(r.note||"")}"></label>
   <button class="btn">Enregistrer</button></form>`}
-function resaRow(id,nuits,titre,sous,isT,icon){const r=resa(id),ok=r.statut==="ok",open=U.rx===id,ro=!canW();
-  return`<div class="card rr${open?" open":""}" id="rx-${esc(id)}"><button class="rh" data-rx="${esc(id)}" aria-expanded="${open}"><span class="nn">${nuits?`<b>${nuits}</b><small>n.</small>`:mic(icon,20)}</span><span class="nm"><b>${esc(titre)}</b><small>${esc(sous)}</small></span><span class="rs ${ok?"ok":r.option?"opt":""}">${ok?"Réservé":"À réserver"}</span></button>
+function resaRow(id,nuits,titre,sous,isT,icon){const r=resa(id),ok=r.statut==="ok"||r.statut==="wait",open=U.rx===id,ro=!canW();
+  return`<div class="card rr${open?" open":""}" id="rx-${esc(id)}"><button class="rh" data-rx="${esc(id)}" aria-expanded="${open}"><span class="nn">${nuits?`<b>${nuits}</b><small>n.</small>`:mic(icon,20)}</span><span class="nm"><b>${esc(titre)}</b><small>${esc(sous)}</small></span><span class="rs ${stCls(id)}">${stLab(id)}</span></button>
   ${open?(ok?`<div class="rd">${r.plateforme?`<div class="kv"><span>${isT?"Loueur":"Où"}</span><b>${esc(r.plateforme)}</b></div>`:""}${r.prix?`<div class="kv"><span>Prix</span><b>${esc(r.prix)}</b></div>`:""}${r.code?secret("rc-"+id,"N° de réservation",r.code):""}${r.lien?`<a class="btn alt" href="${esc(r.lien)}" target="_blank" rel="noopener noreferrer">Ouvrir la réservation</a>`:""}${r.note?`<p class="small">${esc(r.note)}</p>`:""}</div>`:"")+(ro?(ok?"":`<p class="small muted">Pas encore réservé.</p>`):resaForm(id,r,isT)):""}</div>`}
 const V2={
  voy(){if(U.et)return etape();const E=VY.etapes,n=E.reduce((a,e)=>a+e.nuits,0),ok=E.filter(e=>isOk(e.id)).length,s=status(D);
@@ -179,7 +179,7 @@ const V2={
   <p class="small muted" id="eSt" style="text-align:center"></p>`}};
 root.addEventListener("submit",async e=>{const f=e.target.closest("[data-rf]");if(!f)return;e.preventDefault();if(!canW())return;const id=f.dataset.rf,g=n=>f.elements[n].value.trim();
   let lien=g("lien");if(lien&&!/^https:\/\//i.test(lien))lien="";
-  ES.resa={...ES.resa,[id]:{statut:f.dataset.statut==="ok"?"ok":"todo",plateforme:g("plateforme"),prix:g("prix"),code:g("code"),lien,note:g("note"),maj:Date.now()}};
+  ES.resa={...ES.resa,[id]:{statut:["ok","wait"].includes(f.dataset.statut)?f.dataset.statut:"todo",plateforme:g("plateforme"),prix:g("prix"),code:g("code"),lien,note:g("note"),maj:Date.now()}};
   U.rx=null;await eSave(true);render();const x=document.getElementById("rx-"+id);if(x)x.scrollIntoView({block:"center"});eSync(true)});
 const V={
  voy(){return V2.voy()},res(){return V2.res()},
