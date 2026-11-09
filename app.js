@@ -146,11 +146,19 @@ function etape(){const E=VY.etapes,i=E.findIndex(e=>e.id===U.et),e=E[i];if(!e){U
   return`<button class="lnk" data-back>← Toutes les étapes</button>
   <header class="eth"><div><span class="eb">Étape ${i+1} sur ${E.length}</span><h1>${esc(e.nom)}</h1><span>Arrivée ${esc(dLong(e.du))} · départ ${esc(dLong(addD(e.du,e.nuits)))}</span><span class="small">${e.modes.map(m=>mic(m,15)).join("")} ${esc(e.acces)}</span></div><div class="nb" style="background:${c[0]};color:${c[1]}"><b>${e.nuits}</b><span>${nw(e.nuits)}</span></div></header>
   <section class="card"><div class="kv"><span><b class="t2">Logement</b><br><span class="small">${esc(e.logement.ou)}</span></span><button class="rs btn2 ${stCls(e.id)}" data-rx="${esc(e.id)}">${stLab(e.id)}</button></div>
-  ${r.statut==="ok"||r.statut==="wait"?`<p class="small">${esc([r.plateforme,r.prix].filter(Boolean).join(" · "))}${r.lien?` · <a href="${esc(r.lien)}" target="_blank" rel="noopener noreferrer">Ouvrir la réservation</a>`:""}</p>`:`<p class="small muted">Idées : ${esc(e.logement.idees)}${e.logement.prix?". Prix indicatif : "+esc(e.logement.prix):""}</p>`}</section>
+  ${r.statut==="ok"||r.statut==="wait"?`<p class="small">${r.nom?`<b>${esc(r.nom)}</b><br>`:""}${esc([r.plateforme,r.prix,r.petitdej?"Petit-déj. : "+r.petitdej.toLowerCase():""].filter(Boolean).join(" · "))}${r.arrivee?`<br>Arrivée : ${esc(r.arrivee)}<br>Départ : ${esc(r.depart||"")}`:""}${r.adresse?`<br>${esc(r.adresse)}`:""}</p>${r.maps?`<a class="btn" href="${esc(r.maps)}" target="_blank" rel="noopener noreferrer">Itinéraire dans Google Maps</a>`:""}`:`<p class="small muted">Idées : ${esc(e.logement.idees)}${e.logement.prix?". Prix indicatif : "+esc(e.logement.prix):""}</p>`}</section>
   <div class="tabs2" role="tablist"><button role="tab" data-pt="prog" aria-selected="${U.pt==="prog"}">Programme (${e.jours.length+added.length})</button><button role="tab" data-pt="idees" aria-selected="${U.pt==="idees"}">Idées (${e.idees.length})</button></div>
   ${U.pt==="prog"?e.jours.map(j=>`<article class="card dj"><b>${esc(dLong(j.d))}</b><span>${esc(j.t)}</span></article>`).join("")+(added.length?`<h2 class="sec">Ajouté depuis les idées</h2>${added.map(x=>`<div class="card ad"><b>${esc(x.t)}</b>${ro?"":`<button class="sm" data-idea="${esc(x.id)}">Retirer</button>`}</div>`).join("")}`:"")
   :`<p class="small muted">Nos recommandations. ${ro?"Seuls les 2 téléphones du voyage peuvent les ajouter au programme.":"Ajoutez celles qui vous tentent au programme."}</p>${e.idees.map(x=>{const on=ES.prog[x.id]&&ES.prog[x.id].on,k=CAT[x.cat]||CAT.Culture;return`<div class="card idea"><span class="it"><span><i class="cat" style="background:${k[0]};color:${k[1]}">${esc(x.cat)}</i> <b>${esc(x.t)}</b></span><small class="muted">${esc(x.n)}</small></span>${ro?(on?'<span class="rs ok">Au programme</span>':""):`<button class="tg${on?" on":""}" data-idea="${esc(x.id)}" aria-pressed="${!!on}">${on?"✓ Au programme":"Ajouter"}</button>`}</div>`}).join("")}`}
   <p class="small muted" id="eSt" style="text-align:center"></p>`}
+function resaInfo(id,r,isT){const kv=(k,v)=>v?`<div class="kv"><span>${k}</span><b>${esc(v)}</b></div>`:"";
+  return`${r.nom?`<b class="t2">${esc(r.nom)}</b>`:""}${kv(isT?"Loueur":"Plateforme",r.plateforme)}${kv("Prix",r.prix)}${isT?"":kv("Petit-déj.",r.petitdej)}${kv("Arrivée",r.arrivee)}${kv("Départ",r.depart)}
+  ${r.adresse?`<p class="small"><b>Adresse :</b> ${esc(r.adresse)}${r.adresse_zh?`<br><span lang="zh-Hant">${esc(r.adresse_zh)}</span>`:""}</p>`:""}
+  ${r.maps?`<a class="btn" href="${esc(r.maps)}" target="_blank" rel="noopener noreferrer">Itinéraire dans Google Maps</a>`:""}
+  ${r.tel?`<a class="btn alt" href="tel:${esc(r.tel.replace(/\s/g,""))}">Appeler ${esc(r.tel)}</a>`:""}
+  ${r.annulation?`<p class="small"><b>Annulation :</b> ${esc(r.annulation)}</p>`:""}${r.paiement?`<p class="small"><b>Paiement :</b> ${esc(r.paiement)}</p>`:""}
+  ${r.code?secret("rc-"+id,"N° de confirmation",r.code):""}${r.pin?secret("rp-"+id,"Code confidentiel",r.pin):""}
+  ${r.lien?`<a class="btn alt" href="${esc(r.lien)}" target="_blank" rel="noopener noreferrer">Ouvrir la réservation</a>`:""}${r.note?`<p class="small">${esc(r.note)}</p>`:""}`}
 function resaForm(id,r,isT){return`<form class="rf" data-rf="${esc(id)}" data-statut="${esc(r.statut||"todo")}" autocomplete="off">
   <div class="seg" role="group" aria-label="Statut"><button type="button" data-rstat="todo" aria-pressed="${r.statut!=="ok"&&r.statut!=="wait"}">À réserver</button><button type="button" data-rstat="wait" aria-pressed="${r.statut==="wait"}">En attente</button><button type="button" data-rstat="ok" aria-pressed="${r.statut==="ok"}">Réservé</button></div>
   <label class="small">${isT?"Loueur ou compagnie":"Plateforme ou hôtel"}<input class="fi" name="plateforme" maxlength="80" value="${esc(r.plateforme||"")}"></label>
@@ -160,7 +168,7 @@ function resaForm(id,r,isT){return`<form class="rf" data-rf="${esc(id)}" data-st
   <button class="btn">Enregistrer</button></form>`}
 function resaRow(id,nuits,titre,sous,isT,icon){const r=resa(id),ok=r.statut==="ok"||r.statut==="wait",open=U.rx===id,ro=!canW();
   return`<div class="card rr${open?" open":""}" id="rx-${esc(id)}"><button class="rh" data-rx="${esc(id)}" aria-expanded="${open}"><span class="nn">${nuits?`<b>${nuits}</b><small>n.</small>`:mic(icon,20)}</span><span class="nm"><b>${esc(titre)}</b><small>${esc(sous)}</small></span><span class="rs ${stCls(id)}">${stLab(id)}</span></button>
-  ${open?(ok?`<div class="rd">${r.plateforme?`<div class="kv"><span>${isT?"Loueur":"Où"}</span><b>${esc(r.plateforme)}</b></div>`:""}${r.prix?`<div class="kv"><span>Prix</span><b>${esc(r.prix)}</b></div>`:""}${r.code?secret("rc-"+id,"N° de réservation",r.code):""}${r.lien?`<a class="btn alt" href="${esc(r.lien)}" target="_blank" rel="noopener noreferrer">Ouvrir la réservation</a>`:""}${r.note?`<p class="small">${esc(r.note)}</p>`:""}</div>`:"")+(ro?(ok?"":`<p class="small muted">Pas encore réservé.</p>`):resaForm(id,r,isT)):""}</div>`}
+  ${open?(ok?`<div class="rd">${resaInfo(id,r,isT)}</div>`:"")+(ro?(ok?"":`<p class="small muted">Pas encore réservé.</p>`):resaForm(id,r,isT)):""}</div>`}
 const V2={
  voy(){if(U.et)return etape();const E=VY.etapes,n=E.reduce((a,e)=>a+e.nuits,0),ok=E.filter(e=>isOk(e.id)).length,s=status(D);
   return`<span class="kick">Carnet</span><h1 class="h">Taïwan · ${esc(dShort(VY.debut))} → ${esc(dShort(VY.fin))}</h1><p class="small muted">${n} nuits · ${E.length} étapes · ${ok}/${E.length} logements réservés</p>
@@ -172,14 +180,14 @@ const V2={
   return`<span class="kick">Carnet</span><h1 class="h">Réservations</h1>
   <div class="two cnt"><div class="card"><span class="small muted">Logements</span><b>${ok} / ${L.length}</b><i class="pg"><i style="width:${Math.max(3,ok/L.length*100)}%"></i></i></div><div class="card"><span class="small muted">Transports</span><b>${okT} / ${T.length}</b><i class="pg"><i style="width:${Math.max(3,okT/T.length*100)}%"></i></i></div></div>
   <h2 class="sec">Logements · dans l'ordre d'urgence</h2>
-  ${L.map(id=>{const e=byId[id].e;return resaRow(id,e.nuits,e.nom,etDates(e)+((VY.notes_logements||{})[id]?" · "+VY.notes_logements[id]:""),false)}).join("")}
+  ${L.map(id=>{const e=byId[id].e,r=resa(id);return resaRow(id,e.nuits,e.nom,etDates(e)+(r.plateforme?" · "+r.plateforme:"")+(r.petitdej==="Inclus"?" · petit-déj. inclus":"")+(!isOk(id)&&!isWait(id)&&(VY.notes_logements||{})[id]?" · "+VY.notes_logements[id]:""),false)}).join("")}
   <h2 class="sec">Transports</h2>
   ${T.map(t=>resaRow(t.id,0,t.t,t.d+(t.option?" · facultatif":""),true,t.kind)+(U.rx===t.id&&t.n?`<p class="small muted tn">${esc(t.n)}</p>`:"")).join("")}
   <p class="small muted lockline"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>Numéros et liens chiffrés, visibles par vous 4 seulement.</p>
   <p class="small muted" id="eSt" style="text-align:center"></p>`}};
 root.addEventListener("submit",async e=>{const f=e.target.closest("[data-rf]");if(!f)return;e.preventDefault();if(!canW())return;const id=f.dataset.rf,g=n=>f.elements[n].value.trim();
   let lien=g("lien");if(lien&&!/^https:\/\//i.test(lien))lien="";
-  ES.resa={...ES.resa,[id]:{statut:["ok","wait"].includes(f.dataset.statut)?f.dataset.statut:"todo",plateforme:g("plateforme"),prix:g("prix"),code:g("code"),lien,note:g("note"),maj:Date.now()}};
+  ES.resa={...ES.resa,[id]:{...resa(id),statut:["ok","wait"].includes(f.dataset.statut)?f.dataset.statut:"todo",plateforme:g("plateforme"),prix:g("prix"),code:g("code"),lien,note:g("note"),maj:Date.now()}};
   U.rx=null;await eSave(true);render();const x=document.getElementById("rx-"+id);if(x)x.scrollIntoView({block:"center"});eSync(true)});
 const V={
  voy(){return V2.voy()},res(){return V2.res()},
